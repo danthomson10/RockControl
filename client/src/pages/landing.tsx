@@ -12,7 +12,7 @@ export default function Landing() {
           <div className="container mx-auto px-6 pt-20 pb-16 text-center">
             <div className="inline-flex items-center gap-2 px-4 py-2 bg-primary/10 rounded-full mb-6">
               <Shield className="h-4 w-4 text-primary" />
-              <span className="text-sm font-medium text-primary">Enterprise Construction Management</span>
+              <span className="text-sm font-medium text-primary">Enterprise Project Management by TacEdge</span>
             </div>
             
             <h1 className="text-5xl md:text-6xl font-bold tracking-tight mb-6">
@@ -20,8 +20,7 @@ export default function Landing() {
             </h1>
             
             <p className="text-xl text-muted-foreground max-w-2xl mx-auto mb-8">
-              Enterprise-grade Project & Health & Safety management for construction teams.
-              Microsoft-integrated, SiteDocs-style platform with multi-tenant architecture.
+              Enterprise-grade GeoTech Project & Health & Safety management for construction teams.
             </p>
             
             <div className="flex flex-wrap gap-4 justify-center">
@@ -137,7 +136,7 @@ export default function Landing() {
       <footer className="border-t">
         <div className="container mx-auto px-6 py-8">
           <p className="text-center text-muted-foreground text-sm">
-            © {new Date().getFullYear()} Rock Control. Enterprise Construction Management Platform.
+            © {new Date().getFullYear()} Rock Control by TacEdge. Enterprise GeoTech Project & Health & Safety Management.
           </p>
         </div>
       </footer>

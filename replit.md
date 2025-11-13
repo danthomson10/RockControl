@@ -1,7 +1,7 @@
-# Rock Control - Enterprise Construction Management Platform
+# Rock Control - Enterprise Project Management by TacEdge
 
 ## Project Overview
-Enterprise-grade Project & Health & Safety management web application for construction teams. Multi-tenant SiteDocs-style platform featuring role-based access control, dynamic JSON Schema-based forms, digital signatures, incident management, and Microsoft integration.
+Enterprise-grade GeoTech Project & Health & Safety management web application. Multi-tenant platform featuring role-based access control, dynamic JSON Schema-based forms, digital signatures, incident management, and Microsoft integration for construction teams.
 
 ## Tech Stack
 - **Frontend**: React, Wouter (routing), TanStack Query, shadcn/ui, Tailwind CSS
