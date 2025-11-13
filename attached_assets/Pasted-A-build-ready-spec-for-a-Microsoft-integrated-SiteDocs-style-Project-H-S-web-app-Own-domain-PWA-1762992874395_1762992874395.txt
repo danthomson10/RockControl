@@ -1,0 +1,603 @@
+A build-ready spec for a Microsoft-integrated, SiteDocs-style Project & H&S web app. Own domain, PWA + optional Teams tab, JSON-schema forms (text/voice), e-sign approvals, SharePoint file spine, Teams approvals, Twilio voice capture, incident & risk management, analytics. SOC-2-style security, RBAC with Row-Level Security (RLS), immutable audit + signed PDF records.
+
+0) Brand Guidelines (Tokens & UI)
+
+Logo/lockup
+“ROCK” (red) + “CONTROL” (dark grey), tagline small-case under mark.
+
+Palette
+
+Rock Red #E23B2E (primary CTAs, active states)
+
+Slate Dark #3A3A3A (headings/nav)
+
+Mid Grey #777777 (secondary text)
+
+Light Grey #E9ECEF (panels/table rows)
+
+Off-White #FAFBFC (background)
+
+Safety Orange #F59E0B (warnings)
+
+Success Green #16A34A (success)
+
+Typography
+Inter. H1 28/36, H2 22/30, H3 18/26, Body 16/24, Caption 13/18. Use tabular numerals for IDs.
+
+Components
+8–12px radii, subtle shadows, visible focus rings, 44–48px touch targets, disabled = 40% opacity. Primary buttons in Rock Red; destructive uses neutral with confirm.
+
+Layout
+Collapsible left sidebar; sticky top bar with tenant switcher, global search (Cmd/Ctrl-K), Quick Add (Take-5 / Variation / Incident / Photo), offline badge, notifications, user menu. Mobile: sidebar → drawer; optional bottom bar for Field role.
+
+Accessibility
+WCAG AA contrast (≥4.5:1), keyboard support, skip links, reduced-motion option.
+
+1) Architecture & Stack
+
+Front end
+
+Next.js 14 (App Router), TypeScript
+
+Tailwind + shadcn/ui, Lucide icons
+
+TanStack Query, Zod (client validation), PWA (service worker)
+
+Backend
+
+FastAPI (Python), Pydantic v2, Uvicorn
+
+Celery or RQ worker for webhooks/PDF/AI jobs
+
+Data
+
+PostgreSQL (Supabase/Neon/Azure Postgres) with RLS
+
+pgvector (RAG for tender helper)
+
+Files
+
+SharePoint/OneDrive via Microsoft Graph and/or S3/R2 (object-lock)
+
+Auth/SSO
+
+Entra ID (Azure AD) multi-tenant OIDC; optional Google
+
+Voice/E-sign
+
+Twilio (Programmable Voice/SMS), Whisper (ASR), ElevenLabs (TTS)
+
+DocuSign or Adobe Sign (webhooks)
+
+Observability
+
+OpenTelemetry → App Insights/Datadog
+
+2) Monorepo Structure (Turborepo)
+rockcontrol/
+├─ apps/
+│  ├─ web/                  # Next.js PWA
+│  ├─ api/                  # FastAPI app
+│  └─ worker/               # Celery/RQ tasks
+├─ packages/
+│  ├─ ui/                   # design system components
+│  ├─ schemas/              # JSON & UI schemas (+ voice prompts)
+│  └─ config/               # shared eslint/ts/tailwind configs
+├─ infra/
+│  ├─ replit/               # nix + run configs
+│  └─ terraform/            # optional cloud IaC
+└─ .env.example
+
+
+.env.example
+
+APP_URL=
+DATABASE_URL=
+JWT_SECRET=
+
+# Microsoft
+AZURE_TENANT_ID=
+AZURE_CLIENT_ID=
+AZURE_CLIENT_SECRET=
+GRAPH_SCOPES=Files.ReadWrite.All Sites.ReadWrite.All Team.ReadBasic.All offline_access
+SHAREPOINT_SITE_ID=
+
+# Storage (optional S3/R2)
+S3_ENDPOINT=
+S3_BUCKET=
+S3_ACCESS_KEY_ID=
+S3_SECRET_ACCESS_KEY=
+
+# Telephony / Voice
+TWILIO_ACCOUNT_SID=
+TWILIO_AUTH_TOKEN=
+TWILIO_VOICE_NUMBER=
+ELEVENLABS_API_KEY=
+
+# E-sign
+DOCUSIGN_INTEGRATOR_KEY=
+DOCUSIGN_SECRET=
+
+# OpenAI / AI
+OPENAI_API_KEY=
+
+
+Run commands (Replit)
+
+web: pnpm dev
+
+api: uvicorn rockcontrol_api.main:app --host 0.0.0.0 --port 8000 --reload
+
+worker: python -m worker.main
+
+all: turbo run dev
+
+3) Roles & Permissions (RBAC)
+Role	Capabilities
+OrgAdmin	tenant config, users/roles, templates, integrations, retention
+ProjectManager (PM)	projects/jobs/sites, approvals (forms/variations), exports
+HSEManager	incidents/ICAM, inspections, corrective actions, H&S templates
+SiteSupervisor	create daily forms, variations, incidents; sign; assign tasks
+FieldTech	fill/sign forms, upload media, start voice capture
+ClientViewer (opt.)	read-only approved docs
+Subcontractor (opt.)	restricted to assigned jobs
+
+All state changes → immutable audit_log (actor, IP/device, before/after, time).
+
+4) Navigation (Desktop & Mobile)
+
+Top bar (sticky)
+Tenant switcher ▾ · Global search · Quick Add · Offline badge · Notifications · User menu.
+
+Sidebar (role-aware)
+
+Dashboard
+
+Jobs ▸ All | My | Create (PM/Admin)
+
+Sites ▸ All | Map
+
+Work (Field/Sup) ▸ Today · Forms · Variations · Incidents · Permits · Assets
+
+Approvals (PM) ▸ Forms | Variations
+
+Safety (HSE) ▸ Incidents · Inspections · Training/Competency · Templates
+
+Tenders (Admin) ▸ Tender Studio · Past submissions
+
+Admin ▸ Integrations · Users & Roles · Data/Exports · Audit Log
+
+Help
+
+Inside a Job/Site
+Tabs: Overview · Forms · Variations · Incidents · Permits · Assets · Files (SharePoint) · Map · Conversations.
+
+5) Data Model (Core Tables)
+
+tenants(id, name, slug, settings_json)
+
+users(id, tenant_id, email, display_name, role, sso_sub)
+
+audit_log(id, tenant_id, actor, action, entity, entity_id, before_json, after_json, ip, device, ts)
+
+clients(id, tenant_id, name, contact_json)
+
+projects(id, tenant_id, client_id, name, site_geo, reference, status)
+
+sites(id, tenant_id, project_id, site_code, geojson, notes)
+
+jobs(id, tenant_id, project_id, job_code UNIQUE, scope_json, start_date, status)
+
+form_templates(id, tenant_id, name, kind, version, json_schema, ui_schema, voice_json, status)
+
+forms(id, tenant_id, template_id, job_id, site_id, status, schema_version, json_data, pdf_uri, sha256, created_by, submitted_by, approved_by, approved_at)
+
+attachments(id, tenant_id, owner_type, owner_id, uri, sha256, exif_geo, meta_json)
+
+form_artifacts(id, tenant_id, form_id, type, uri, sha256, created_at) // pdf|ai_summary|transcript|audio
+
+variations(id, tenant_id, job_id, reason, risk_change, est_hours, cost_estimate, status, approvals_json)
+
+incidents(id, tenant_id, job_id, severity, classification, injured_party_json, actions_json, status)
+
+assets(id, tenant_id, type, serial, cert_expiry, meta_json)
+
+training(id, tenant_id, user_id, ticket_type, attained_at, expires_at, doc_uri)
+
+Collaboration: rooms / threads / messages / tasks / decisions
+
+RLS: ALL tables restricted by tenant_id (+ role filters where needed).
+
+6) Forms Engine (JSON Schema + UI Schema + Voice)
+
+Widgets supported:
+radio (single choice), select, checkboxes (multi), short text, textarea, number, date, boolean, signature, photo/video (URI), geotag.
+
+Rules
+
+Enumerate compliance fields (risk bands, permits) as enums → radio/checkboxes.
+
+schema.required + server validation; conditional if/then/else.
+
+Prefill read-only chips (JobCode, Site, Client, Supervisor).
+
+Version pinning on submit; generate immutable PDF; store hash.
+
+Voice metadata (per template)
+
+{
+  "voice": {
+    "opening_prompt": "Let's complete a Take-5 for {{job_code}}.",
+    "fields": {
+      "hazard": {"prompt": "What is the hazard?"},
+      "likelihood": {"prompt": "Likelihood — rare, unlikely, possible, likely, almost certain?"}
+    },
+    "readback_template": "Hazard {{hazard}}, likelihood {{likelihood}}. Confirm?"
+  }
+}
+
+7) Template Examples (copy-paste)
+A) Variation (Out-of-Scope) — JSON
+{
+  "template_id": "VARIATION_V1",
+  "name": "Out-of-Scope Variation",
+  "kind": "VARIATION",
+  "version": 1,
+  "prefill": ["job_code","site_id","client_name"],
+  "schema": {
+    "type": "object",
+    "required": ["job_code","reason","risk_change","est_hours","approval_required"],
+    "properties": {
+      "job_code": {"type":"string","readOnly":true},
+      "site_id": {"type":"string","readOnly":true},
+      "reason": {"type":"string","enum":["Client Request","Unforeseen Conditions","Design Change","Safety"]},
+      "description": {"type":"string","maxLength":1200},
+      "risk_change": {"type":"string","enum":["None","Low","Medium","High"]},
+      "materials": {"type":"array","items":{"type":"string"}},
+      "est_hours": {"type":"number","minimum":0},
+      "cost_estimate": {"type":"number","minimum":0},
+      "photos": {"type":"array","items":{"type":"string","format":"uri"}},
+      "approval_required": {"type":"boolean","default":true},
+      "signatures": {
+        "type":"object",
+        "properties": {
+          "requester":{"type":"string"},
+          "pm":{"type":"string"},
+          "client":{"type":"string"}
+        }
+      }
+    }
+  },
+  "uiSchema": {
+    "risk_change": {"ui:widget":"radio"},
+    "reason": {"ui:widget":"select"},
+    "description": {"ui:widget":"textarea"}
+  },
+  "voice": {
+    "opening_prompt":"Logging a variation for {{job_code}}. What changed?",
+    "fields": {
+      "reason":{"prompt":"Reason — client request, unforeseen, design change, or safety?"},
+      "description":{"prompt":"Describe the work to add or change."},
+      "risk_change":{"prompt":"Risk change — none, low, medium, or high?"},
+      "est_hours":{"prompt":"Estimated hours?"},
+      "cost_estimate":{"prompt":"Estimated cost in dollars?"}
+    },
+    "readback_template":"Add: {{description}} at {{site_id}} for {{job_code}}. Reason {{reason}}, risk {{risk_change}}, {{est_hours}} h, ${{cost_estimate}}. Confirm?"
+  }
+}
+
+B) Crew Briefing / Risk Control Plan — JSON (excerpt)
+{
+  "template_id": "CREW_BRIEFING_V1",
+  "name": "Crew Briefing & Risk Control Plan",
+  "kind": "RISK",
+  "version": 1,
+  "prefill": ["project","job_code","site","supervisor","tmp_number","stms_site"],
+  "schema": {
+    "type": "object",
+    "required": ["job_code","supervisor","sign_on"],
+    "properties": {
+      "project":{"type":"string","readOnly":true},
+      "job_code":{"type":"string","readOnly":true},
+      "site":{"type":"string","readOnly":true},
+      "tmp_number":{"type":"string"},
+      "stms_site":{"type":"string"},
+      "supervisor":{"type":"string"},
+      "risks": {
+        "type":"array",
+        "items": {
+          "type":"object",
+          "required":["hazard","potential","likelihood","controls","residual","responsible"],
+          "properties": {
+            "hazard":{"type":"string"},
+            "potential":{"type":"string","enum":["Insignificant","Minor","Moderate","Major","Catastrophic"]},
+            "likelihood":{"type":"string","enum":["Rare","Unlikely","Possible","Likely","Almost Certain"]},
+            "risk_rating":{"type":"string","readOnly":true},
+            "controls":{"type":"string"},
+            "residual":{"type":"string","enum":["Low","Moderate","High","Extreme"]},
+            "responsible":{"type":"string"},
+            "initials":{"type":"string"},
+            "date":{"type":"string","format":"date"}
+          }
+        }
+      },
+      "site_comms":{"type":"array","items":{"type":"string","enum":["All crew have radios","Briefing completed","Emergency contacts confirmed"]}},
+      "emergency_plan":{"type":"object","properties":{"nearest_med_centre":{"type":"string"},"address":{"type":"string"},"notes":{"type":"string"}}},
+      "critical_env_hazards":{"type":"string"},
+      "sign_on": {
+        "type":"array",
+        "items":{"type":"object","required":["name","date"],"properties":{"name":{"type":"string"},"date":{"type":"string","format":"date"},"signature":{"type":"string"}}}
+      }
+    }
+  },
+  "uiSchema": {
+    "risks.items.potential":{"ui:widget":"radio"},
+    "risks.items.likelihood":{"ui:widget":"radio"},
+    "risks.items.controls":{"ui:widget":"textarea"},
+    "critical_env_hazards":{"ui:widget":"textarea"}
+  },
+  "voice": {
+    "opening_prompt":"Kia ora — let's run the daily briefing for {{job_code}}.",
+    "fields": {
+      "risks":{"prompt":"List a hazard and the control. Say 'done' when finished."},
+      "site_comms":{"prompt":"Confirm comms — radios, briefing, emergency contacts?"}
+    },
+    "readback_template":"Briefing for {{job_code}} captured with {{risks.length}} hazards. Proceed to sign-on?"
+  }
+}
+
+C) Rope Rescue Plan — JSON (excerpt)
+{
+  "template_id": "ROPE_RESCUE_V1",
+  "name": "Rope Rescue Plan",
+  "kind": "RESCUE",
+  "version": 1,
+  "prefill": ["job_code","site","supervisor"],
+  "schema": {
+    "type":"object",
+    "required":["job_code","team_members","planned_method","signatures"],
+    "properties":{
+      "job_code":{"type":"string","readOnly":true},
+      "site":{"type":"string","readOnly":true},
+      "team_members":{"type":"array","items":{"type":"string"}},
+      "heli_coords":{"type":"string","description":"LZ GPS (lat,long)"},
+      "planned_method":{"type":"string","enum":["Haul System","Lowering","Pick-off","Other"]},
+      "equipment":{"type":"array","items":{"type":"string"}},
+      "assistance_checklist":{"type":"array","items":{"type":"string","enum":["Comms plan in place","Helicopter permission","Stretcher & first aid","Traffic management in place"]}},
+      "notes":{"type":"string"},
+      "signatures":{"type":"object","properties":{"site_engineer":{"type":"string"},"foreman":{"type":"string"},"date":{"type":"string","format":"date"}}}
+    }
+  },
+  "uiSchema":{"notes":{"ui:widget":"textarea"}},
+  "voice":{
+    "opening_prompt":"Let's record a rope rescue plan for {{job_code}}.",
+    "fields":{
+      "planned_method":{"prompt":"Planned rescue method? Haul, lowering, pick-off or other?"},
+      "heli_coords":{"prompt":"What are the landing zone coordinates?"},
+      "equipment":{"prompt":"List key equipment — say 'done' when finished."}
+    },
+    "readback_template":"Rescue plan for {{job_code}} using {{planned_method}} at {{heli_coords}}. Confirm?"
+  }
+}
+
+8) Voice/Twilio + Whisper Flow
+
+User taps Voice Capture (web) or dials Twilio number.
+
+ElevenLabs TTS prompts; ASR via Whisper or Twilio STT.
+
+Dialogue follows template.voice.fields; only required/conditional.
+
+Read-back → user confirms.
+
+Server validates JSON → create form (SUBMITTED) → optional e-sign → generate PDF → upload to SharePoint → notify PM (and Teams card).
+
+Save artifacts: transcript, AI summary, audio, PDF (each with hash + URI).
+
+Webhooks
+
+/webhooks/twilio/voice
+
+/webhooks/docusign
+
+/webhooks/sharepoint (delta notifications)
+
+/webhooks/teams/approval
+
+9) Microsoft Graph, SharePoint & Teams
+
+SSO
+
+Entra ID (OIDC). Map Azure tid → tenant_id. MFA/Conditional Access supported.
+
+SharePoint/OneDrive
+
+Project library per Job; upload sessions for large drone media; thumbnails; EXIF/geo saved in attachments.
+
+Subscribe to changes; on delta, ingest files and auto-link to Job/Site.
+
+Teams (optional “second doorway”)
+
+Teams Tab loads https://APP_URL/teams/project/{id} with SSO.
+
+Bot + Adaptive Cards post approvals; Approve/Reject → webhook updates status.
+
+Message Extension lets users drop Job/Form cards into chat.
+
+Planner/Outlook (optional)
+
+Corrective actions → Planner; toolbox talks/ICAM → Outlook or Group calendar.
+
+Scopes (least-privilege)
+User.Read Files.ReadWrite.All Sites.ReadWrite.All offline_access (+ Teams/Planner/Calendars as required). Delegated for user actions; app-only for daemons.
+
+Teams App Manifest (minimal)
+
+{
+  "$schema": "https://developer.microsoft.com/json-schemas/teams/v1.16/MicrosoftTeams.schema.json",
+  "manifestVersion": "1.16",
+  "version": "1.0.0",
+  "id": "YOUR-GUID",
+  "packageName": "nz.rockcontrol.app",
+  "developer": { "name": "Rock Control", "websiteUrl": "https://app.rockcontrol.nz", "privacyUrl": "https://app.rockcontrol.nz/privacy", "termsOfUseUrl": "https://app.rockcontrol.nz/terms" },
+  "name": { "short": "RockControl", "full": "RockControl Portal" },
+  "description": { "short": "Project & H&S portal", "full": "Forms, variations, incidents, and approvals with SharePoint filing." },
+  "accentColor": "#E23B2E",
+  "staticTabs": [],
+  "configurableTabs": [{
+    "configurationUrl": "https://app.rockcontrol.nz/teams/config",
+    "canUpdateConfiguration": true,
+    "scopes": ["team"],
+    "sharePointPreviewImage": "https://app.rockcontrol.nz/icon.png"
+  }],
+  "bots": [{
+    "botId": "YOUR-BOT-ID",
+    "scopes": ["team","personal"],
+    "supportsFiles": false,
+    "isNotificationOnly": false
+  }],
+  "webApplicationInfo": {
+    "id": "AZURE-APP-CLIENT-ID",
+    "resource": "api://AZURE-APP-CLIENT-ID"
+  },
+  "validDomains": ["app.rockcontrol.nz"]
+}
+
+10) API Surface (FastAPI)
+GET  /health
+POST /auth/oidc/callback
+
+# tenants/users
+GET  /tenants/me
+GET  /users/me
+
+# projects/jobs/sites
+GET/POST /projects
+GET/POST /jobs
+GET/POST /sites
+
+# templates
+GET  /form-templates?kind=...
+POST /form-templates
+POST /form-templates/{id}/publish
+
+# forms
+POST /forms                      # (template_id, job_id, site_id) → prefill
+GET  /forms/{id}
+PATCH /forms/{id}
+POST /forms/{id}/submit
+POST /forms/{id}/approve
+POST /forms/{id}/pdf
+
+# variations
+POST /variations
+PATCH /variations/{id}/status
+POST /variations/{id}/sign
+
+# incidents
+POST /incidents
+GET  /incidents/:id
+PATCH /incidents/:id
+
+# files
+POST /files/presign-upload
+POST /files/sharepoint/upload
+GET  /files/{id}
+
+# webhooks
+POST /webhooks/twilio/voice
+POST /webhooks/docusign
+POST /webhooks/sharepoint
+POST /webhooks/teams/approval
+
+# ai helpers
+POST /ai/tender/draft
+POST /ai/summarise-form
+
+
+Error model
+
+{ "error": { "code": "string", "message": "string", "details": {} } }
+
+11) Storage & Records
+
+Canonical record = DB row + immutable PDF (hash + timestamp).
+
+SharePoint record copy per tenant/project/job path; store URL + hash.
+
+Artifacts: transcript / AI summary / audio saved separately; summary is advisory (PDF is truth).
+
+AV scan on upload; type/size limits.
+
+12) Offline-First (PWA)
+
+Cache app shell + last N Jobs/Sites/Forms (IndexedDB via Dexie).
+
+Queue mutations (form edits/media) → background sync.
+
+Conflicts: last-write-wins for chat/tasks; field-level merge for drafts; lock while under approval.
+
+13) Security & Compliance (SOC-2-style)
+
+Entra SSO + MFA; Conditional Access-friendly.
+
+Postgres RLS everywhere; TLS in transit; at-rest encryption.
+
+Secrets: Replit Secrets (dev) / Azure Key Vault (prod); rotate.
+
+Immutable audit_log; clock sync; IP/device capture.
+
+Backups + tested restore; retention rules (e.g., H&S ≥ 7 years).
+
+14) Developer Experience
+
+Tooling: Ruff + Mypy (Python), ESLint + tsc + Prettier (TS), Commitlint.
+Tests: PyTest (API), Vitest/RTL (web).
+Seed: demo tenant, project/job/site, 3 templates (Take-5, Crew Briefing, Variation).
+CI: lint → typecheck → tests → build Next.js; package API/worker.
+
+Conventions
+
+API responses snake_case; client maps to camelCase.
+
+Idempotent webhooks; external I/O goes through worker queue.
+
+15) Milestones & Acceptance
+
+MVP-A (Auth + Forms + SharePoint)
+
+Entra SSO multi-tenant; RBAC; RLS
+
+Jobs/Sites; Form engine (Take-5 + Crew Briefing/Risk)
+
+PDF + hash; evidence upload; SharePoint export; audit log
+
+MVP-B (Variations + Approvals + Teams)
+
+Variation workflow (PM/Client approvals); e-sign; Teams Adaptive Card
+
+AI summary artifact; Power BI starter dataset
+
+MVP-C (Voice)
+
+Twilio/Whisper capture for Variation/JSA; read-back confirm; artifacts stored
+
+MVP-D (Incidents/ICAM & Actions)
+
+Incident flow, corrective actions (Planner opt.), dashboards
+
+16) Power Automate → RockControl (optional MS Forms intake)
+
+Webhook endpoint (FastAPI)
+
+POST /forms/intake/msforms
+Headers: Authorization: Bearer <tenant-token>
+Body: {
+  "form_id": "GUID",
+  "job_code": "RC-217",
+  "site_id": "B-Grid",
+  "answers": { "q1":"...", "q2":[...], "photos":[ "https://sharepoint/.../file.jpg" ] }
+}
+
+
+Server maps → target template schema, validates, creates Form, generates PDF, files to SharePoint.
