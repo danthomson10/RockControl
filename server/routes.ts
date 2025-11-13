@@ -16,9 +16,9 @@ export async function registerRoutes(app: Express): Promise<void> {
       
       if (!user) {
         // User authenticated with Replit but not in database yet
-        // This should not happen if upsertUser works correctly, but handle gracefully
+        // Return null to indicate unauthenticated state (will be created on first action)
         console.warn(`Authenticated user ${replitId} not found in database`);
-        return res.status(401).json({ message: "User not found" });
+        return res.status(200).json(null);
       }
       
       res.json(user);
@@ -90,9 +90,9 @@ export async function registerRoutes(app: Express): Promise<void> {
     try {
       const organizationId = await getOrgFromUser(req);
       const id = parseInt(req.params.id);
-      const job = await storage.jobs.getById(id);
+      const job = await storage.jobs.getByIdScoped(id, organizationId);
       
-      if (!job || job.organizationId !== organizationId) {
+      if (!job) {
         return res.status(404).json({ error: "Job not found" });
       }
       
@@ -106,8 +106,10 @@ export async function registerRoutes(app: Express): Promise<void> {
   
   app.post("/api/jobs", isAuthenticated, async (req: any, res) => {
     try {
+      const organizationId = await getOrgFromUser(req);
       const data = insertJobSchema.parse(req.body);
-      const job = await storage.jobs.create(data);
+      // Enforce tenant isolation - override organizationId from session
+      const job = await storage.jobs.create({ ...data, organizationId });
       res.status(201).json(job);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -119,9 +121,12 @@ export async function registerRoutes(app: Express): Promise<void> {
   
   app.patch("/api/jobs/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const organizationId = await getOrgFromUser(req);
       const id = parseInt(req.params.id);
       const data = insertJobSchema.partial().parse(req.body);
-      const job = await storage.jobs.update(id, data);
+      
+      // Use scoped update - enforces tenant isolation at storage layer
+      const job = await storage.jobs.updateScoped(id, organizationId, data);
       
       if (!job) {
         return res.status(404).json({ error: "Job not found" });
@@ -149,8 +154,9 @@ export async function registerRoutes(app: Express): Promise<void> {
   
   app.get("/api/forms/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const organizationId = await getOrgFromUser(req);
       const id = parseInt(req.params.id);
-      const form = await storage.forms.getById(id);
+      const form = await storage.forms.getByIdScoped(id, organizationId);
       
       if (!form) {
         return res.status(404).json({ error: "Form not found" });
@@ -164,8 +170,10 @@ export async function registerRoutes(app: Express): Promise<void> {
   
   app.post("/api/forms", isAuthenticated, async (req: any, res) => {
     try {
+      const organizationId = await getOrgFromUser(req);
       const data = insertFormSchema.parse(req.body);
-      const form = await storage.forms.create(data);
+      // Enforce tenant isolation - override organizationId from session
+      const form = await storage.forms.create({ ...data, organizationId });
       res.status(201).json(form);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -177,9 +185,12 @@ export async function registerRoutes(app: Express): Promise<void> {
   
   app.patch("/api/forms/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const organizationId = await getOrgFromUser(req);
       const id = parseInt(req.params.id);
       const data = insertFormSchema.partial().parse(req.body);
-      const form = await storage.forms.update(id, data);
+      
+      // Use scoped update - enforces tenant isolation at storage layer
+      const form = await storage.forms.updateScoped(id, organizationId, data);
       
       if (!form) {
         return res.status(404).json({ error: "Form not found" });
@@ -207,8 +218,9 @@ export async function registerRoutes(app: Express): Promise<void> {
   
   app.get("/api/incidents/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const organizationId = await getOrgFromUser(req);
       const id = parseInt(req.params.id);
-      const incident = await storage.incidents.getById(id);
+      const incident = await storage.incidents.getByIdScoped(id, organizationId);
       
       if (!incident) {
         return res.status(404).json({ error: "Incident not found" });
@@ -222,8 +234,10 @@ export async function registerRoutes(app: Express): Promise<void> {
   
   app.post("/api/incidents", isAuthenticated, async (req: any, res) => {
     try {
+      const organizationId = await getOrgFromUser(req);
       const data = insertIncidentSchema.parse(req.body);
-      const incident = await storage.incidents.create(data);
+      // Enforce tenant isolation - override organizationId from session
+      const incident = await storage.incidents.create({ ...data, organizationId });
       res.status(201).json(incident);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -235,9 +249,12 @@ export async function registerRoutes(app: Express): Promise<void> {
   
   app.patch("/api/incidents/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const organizationId = await getOrgFromUser(req);
       const id = parseInt(req.params.id);
       const data = insertIncidentSchema.partial().parse(req.body);
-      const incident = await storage.incidents.update(id, data);
+      
+      // Use scoped update - enforces tenant isolation at storage layer
+      const incident = await storage.incidents.updateScoped(id, organizationId, data);
       
       if (!incident) {
         return res.status(404).json({ error: "Incident not found" });

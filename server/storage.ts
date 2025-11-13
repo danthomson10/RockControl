@@ -40,9 +40,11 @@ export interface IStorage {
   jobs: {
     create(data: InsertJob): Promise<Job>;
     getById(id: number): Promise<Job | undefined>;
+    getByIdScoped(id: number, organizationId: number): Promise<Job | undefined>;
     getByCode(code: string, organizationId: number): Promise<Job | undefined>;
     getByOrganization(organizationId: number): Promise<Job[]>;
     update(id: number, data: Partial<Omit<InsertJob, 'organizationId' | 'code' | 'createdById'>>): Promise<Job | undefined>;
+    updateScoped(id: number, organizationId: number, data: Partial<Omit<InsertJob, 'organizationId' | 'code' | 'createdById'>>): Promise<Job | undefined>;
     getStats(organizationId: number): Promise<{
       total: number;
       active: number;
@@ -58,9 +60,11 @@ export interface IStorage {
   forms: {
     create(data: InsertForm): Promise<Form>;
     getById(id: number): Promise<Form | undefined>;
+    getByIdScoped(id: number, organizationId: number): Promise<Form | undefined>;
     getByJob(jobId: number): Promise<Form[]>;
     getByOrganization(organizationId: number, limit?: number): Promise<Form[]>;
     update(id: number, data: Partial<Omit<InsertForm, 'organizationId' | 'formCode' | 'submittedById'>>): Promise<Form | undefined>;
+    updateScoped(id: number, organizationId: number, data: Partial<Omit<InsertForm, 'organizationId' | 'formCode' | 'submittedById'>>): Promise<Form | undefined>;
     getStats(organizationId: number): Promise<{
       total: number;
       pending: number;
@@ -71,9 +75,11 @@ export interface IStorage {
   incidents: {
     create(data: InsertIncident): Promise<Incident>;
     getById(id: number): Promise<Incident | undefined>;
+    getByIdScoped(id: number, organizationId: number): Promise<Incident | undefined>;
     getByJob(jobId: number): Promise<Incident[]>;
     getByOrganization(organizationId: number, limit?: number): Promise<Incident[]>;
     update(id: number, data: Partial<Omit<InsertIncident, 'organizationId' | 'incidentCode' | 'reportedById'>>): Promise<Incident | undefined>;
+    updateScoped(id: number, organizationId: number, data: Partial<Omit<InsertIncident, 'organizationId' | 'incidentCode' | 'reportedById'>>): Promise<Incident | undefined>;
     getStats(organizationId: number): Promise<{
       total: number;
       open: number;
@@ -174,6 +180,12 @@ export class DatabaseStorage implements IStorage {
       return job;
     },
     
+    getByIdScoped: async (id: number, organizationId: number): Promise<Job | undefined> => {
+      const [job] = await db.select().from(jobs)
+        .where(and(eq(jobs.id, id), eq(jobs.organizationId, organizationId)));
+      return job;
+    },
+    
     getByCode: async (code: string, organizationId: number): Promise<Job | undefined> => {
       const [job] = await db.select().from(jobs)
         .where(and(eq(jobs.code, code), eq(jobs.organizationId, organizationId)));
@@ -199,6 +211,23 @@ export class DatabaseStorage implements IStorage {
       const [job] = await db.update(jobs)
         .set(updates)
         .where(eq(jobs.id, id))
+        .returning();
+      return job;
+    },
+    
+    updateScoped: async (id: number, organizationId: number, data: Partial<Omit<InsertJob, 'organizationId' | 'code' | 'createdById'>>): Promise<Job | undefined> => {
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      
+      // Only include defined values in update
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined) {
+          updates[key] = value;
+        }
+      });
+      
+      const [job] = await db.update(jobs)
+        .set(updates)
+        .where(and(eq(jobs.id, id), eq(jobs.organizationId, organizationId)))
         .returning();
       return job;
     },
@@ -232,6 +261,12 @@ export class DatabaseStorage implements IStorage {
     
     getById: async (id: number): Promise<Form | undefined> => {
       const [form] = await db.select().from(forms).where(eq(forms.id, id));
+      return form;
+    },
+    
+    getByIdScoped: async (id: number, organizationId: number): Promise<Form | undefined> => {
+      const [form] = await db.select().from(forms)
+        .where(and(eq(forms.id, id), eq(forms.organizationId, organizationId)));
       return form;
     },
     
@@ -269,6 +304,23 @@ export class DatabaseStorage implements IStorage {
       return form;
     },
     
+    updateScoped: async (id: number, organizationId: number, data: Partial<Omit<InsertForm, 'organizationId' | 'formCode' | 'submittedById'>>): Promise<Form | undefined> => {
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      
+      // Only include defined values in update
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined) {
+          updates[key] = value;
+        }
+      });
+      
+      const [form] = await db.update(forms)
+        .set(updates)
+        .where(and(eq(forms.id, id), eq(forms.organizationId, organizationId)))
+        .returning();
+      return form;
+    },
+    
     getStats: async (organizationId: number) => {
       const allForms = await db.select().from(forms).where(eq(forms.organizationId, organizationId));
       return {
@@ -287,6 +339,12 @@ export class DatabaseStorage implements IStorage {
     
     getById: async (id: number): Promise<Incident | undefined> => {
       const [incident] = await db.select().from(incidents).where(eq(incidents.id, id));
+      return incident;
+    },
+    
+    getByIdScoped: async (id: number, organizationId: number): Promise<Incident | undefined> => {
+      const [incident] = await db.select().from(incidents)
+        .where(and(eq(incidents.id, id), eq(incidents.organizationId, organizationId)));
       return incident;
     },
     
@@ -320,6 +378,23 @@ export class DatabaseStorage implements IStorage {
       const [incident] = await db.update(incidents)
         .set(updates)
         .where(eq(incidents.id, id))
+        .returning();
+      return incident;
+    },
+    
+    updateScoped: async (id: number, organizationId: number, data: Partial<Omit<InsertIncident, 'organizationId' | 'incidentCode' | 'reportedById'>>): Promise<Incident | undefined> => {
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      
+      // Only include defined values in update
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined) {
+          updates[key] = value;
+        }
+      });
+      
+      const [incident] = await db.update(incidents)
+        .set(updates)
+        .where(and(eq(incidents.id, id), eq(incidents.organizationId, organizationId)))
         .returning();
       return incident;
     },
