@@ -15,6 +15,7 @@ import ResetPassword from "@/pages/reset-password";
 import RequestAccess from "@/pages/request-access";
 import Dashboard from "@/pages/dashboard";
 import Forms from "@/pages/forms";
+import Take5Form from "@/pages/take-5-form";
 import JobDetailByCode from "@/pages/job-detail-by-code";
 import NotFound from "@/pages/not-found";
 
@@ -50,6 +51,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/forms" component={Forms} />
+      <Route path="/forms/take-5" component={Take5Form} />
       <Route path="/jobs/:code" component={JobDetailByCode} />
       <Route component={NotFound} />
     </Switch>
