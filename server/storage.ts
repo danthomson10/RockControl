@@ -6,6 +6,8 @@ import {
   jobMembers,
   forms,
   incidents,
+  accessRequests,
+  oauthConnections,
   type InsertOrganization,
   type Organization,
   type InsertUser,
@@ -19,6 +21,10 @@ import {
   type Form,
   type InsertIncident,
   type Incident,
+  type InsertAccessRequest,
+  type AccessRequest,
+  type InsertOAuthConnection,
+  type OAuthConnection,
 } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 
@@ -35,6 +41,20 @@ export interface IStorage {
     getByEmail(email: string): Promise<User | undefined>;
     getByOrganization(organizationId: number): Promise<User[]>;
     upsertUser(data: UpsertUser): Promise<User>;
+    update(id: number, data: Partial<InsertUser>): Promise<User | undefined>;
+  };
+  
+  accessRequests: {
+    create(data: InsertAccessRequest): Promise<AccessRequest>;
+    getById(id: number): Promise<AccessRequest | undefined>;
+    getByOrganization(organizationId: number, status?: 'pending' | 'approved' | 'denied'): Promise<AccessRequest[]>;
+    update(id: number, data: Partial<InsertAccessRequest>): Promise<AccessRequest | undefined>;
+  };
+  
+  oauthConnections: {
+    create(data: InsertOAuthConnection): Promise<OAuthConnection>;
+    getByUserAndProvider(userId: number, provider: 'google' | 'github' | 'microsoft'): Promise<OAuthConnection | undefined>;
+    update(id: number, data: Partial<InsertOAuthConnection>): Promise<OAuthConnection | undefined>;
   };
   
   jobs: {
@@ -166,6 +186,66 @@ export class DatabaseStorage implements IStorage {
           .returning();
         return user;
       }
+    },
+    
+    update: async (id: number, data: Partial<InsertUser>): Promise<User | undefined> => {
+      const [user] = await db.update(users)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(users.id, id))
+        .returning();
+      return user;
+    },
+  };
+  
+  accessRequests = {
+    create: async (data: InsertAccessRequest): Promise<AccessRequest> => {
+      const [request] = await db.insert(accessRequests).values(data).returning();
+      return request;
+    },
+    
+    getById: async (id: number): Promise<AccessRequest | undefined> => {
+      const [request] = await db.select().from(accessRequests).where(eq(accessRequests.id, id));
+      return request;
+    },
+    
+    getByOrganization: async (organizationId: number, status?: 'pending' | 'approved' | 'denied'): Promise<AccessRequest[]> => {
+      if (status) {
+        return db.select().from(accessRequests)
+          .where(and(eq(accessRequests.organizationId, organizationId), eq(accessRequests.status, status)))
+          .orderBy(desc(accessRequests.createdAt));
+      }
+      return db.select().from(accessRequests)
+        .where(eq(accessRequests.organizationId, organizationId))
+        .orderBy(desc(accessRequests.createdAt));
+    },
+    
+    update: async (id: number, data: Partial<InsertAccessRequest>): Promise<AccessRequest | undefined> => {
+      const [request] = await db.update(accessRequests)
+        .set(data)
+        .where(eq(accessRequests.id, id))
+        .returning();
+      return request;
+    },
+  };
+  
+  oauthConnections = {
+    create: async (data: InsertOAuthConnection): Promise<OAuthConnection> => {
+      const [connection] = await db.insert(oauthConnections).values(data).returning();
+      return connection;
+    },
+    
+    getByUserAndProvider: async (userId: number, provider: 'google' | 'github' | 'microsoft'): Promise<OAuthConnection | undefined> => {
+      const [connection] = await db.select().from(oauthConnections)
+        .where(and(eq(oauthConnections.userId, userId), eq(oauthConnections.provider, provider)));
+      return connection;
+    },
+    
+    update: async (id: number, data: Partial<InsertOAuthConnection>): Promise<OAuthConnection | undefined> => {
+      const [connection] = await db.update(oauthConnections)
+        .set({ ...data, updatedAt: new Date() })
+        .where(eq(oauthConnections.id, id))
+        .returning();
+      return connection;
     },
   };
   
