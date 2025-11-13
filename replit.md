@@ -23,6 +23,26 @@ Enterprise-grade GeoTech Project & Health & Safety management web application. M
    - Landing page for unauthenticated users
    - Auth routing with loading states
 
+6. **Role-Based Access Control (RBAC)** ✅ Security Verified
+   - Centralized RBAC module (`server/rbac.ts`) with role capability matrix
+   - 7 roles with granular permissions: OrgAdmin, ProjectManager, HSEManager, SiteSupervisor, FieldTech, ClientViewer, Subcontractor
+   - Middleware enforcement on ALL mutating endpoints (jobs, forms, incidents)
+   - Secure authentication flow: isAuthenticated → loadCurrentUser → requireCapability
+   - Frontend permission checks before showing management UI
+   - **Architect-verified**: ✅ PASS - No security vulnerabilities
+
+7. **Jobs Management Page**
+   - Grid view with search functionality
+   - Job creation dialog (admin/manager only)
+   - Mobile-responsive design with status badges and progress bars
+   - Permission-gated add/edit operations
+   - View-only access for non-management roles
+
+8. **Forms Integration with Jobs**
+   - Variation form now selects from existing jobs dropdown
+   - Auto-populates site location from selected job
+   - All forms link to jobs for proper project tracking
+
 2. **Database Schema** (6 tables)
    - organizations: Multi-tenant organization management
    - users: User profiles with replitId mapping, role-based access
@@ -56,17 +76,52 @@ Enterprise-grade GeoTech Project & Health & Safety management web application. M
 ## Security Architecture
 
 ### Multi-Tenant Isolation
-- **Route-level protection**: All API routes require isAuthenticated middleware
-- **Session-based org scoping**: getOrgFromUser extracts organizationId from authenticated user
+- **Route-level protection**: All API routes require authentication via `withAuth` middleware
+- **Session-based org scoping**: `req.currentUser.organizationId` enforced on all operations
 - **Storage-layer enforcement**: Scoped methods (getByIdScoped, updateScoped) prevent cross-tenant access
-- **POST route hardening**: organizationId overridden from session, not request body
+- **POST/PATCH route hardening**: organizationId, createdById, submittedById overridden from authenticated user
 
-### Known Limitations (To Address in Tasks 2-3)
-1. **User Provisioning**: upsertUser currently assigns new users to org 1 with FieldTech role
-   - Will be replaced with invitation-based seat assignment (Task 2)
-2. **Collection Endpoints**: getByOrganization/getStats trust route-provided organizationId
-   - Acceptable with current middleware protection
-   - Future hardening: Refactor to storage-layer scoping (Task 3)
+### Role-Based Access Control (RBAC)
+
+#### Role Capability Matrix
+| Role | Manage Jobs | Manage Forms | Manage Incidents | Manage Users | View All |
+|------|------------|--------------|------------------|--------------|----------|
+| **OrgAdmin** | ✅ | ✅ | ✅ | ✅ | ✅ |
+| **ProjectManager** | ✅ | ✅ | ✅ | ❌ | ✅ |
+| **HSEManager** | ✅ | ✅ | ✅ | ❌ | ✅ |
+| **SiteSupervisor** | ❌ | ✅ | ✅ | ❌ | ✅ |
+| **FieldTech** | ❌ | ✅ | ✅ | ❌ | ❌* |
+| **ClientViewer** | ❌ | ❌ | ❌ | ❌ | ✅ (read-only) |
+| **Subcontractor** | ❌ | ✅ | ✅ | ❌ | ❌* |
+
+*Limited to assigned jobs (future implementation)
+
+#### Middleware Architecture
+```typescript
+// Route middleware chain
+app.post("/api/jobs", 
+  ...withAuth(isAuthenticated),      // 1. Verify auth token
+                                     // 2. Load user from DB
+  requireCapability("canManageJobs"), // 3. Check capability
+  async (req, res) => {              // 4. Execute handler
+    const user = req.currentUser!;   // User guaranteed to exist
+  }
+);
+```
+
+#### Protected Endpoints
+**Jobs:**
+- POST /api/jobs → requireCapability("canManageJobs")
+- PATCH /api/jobs/:id → requireCapability("canManageJobs")
+
+**Forms:**
+- POST /api/forms → requireCapability("canManageForms")
+- PATCH /api/forms/:id → requireCapability("canManageForms")
+- POST /api/variations → requireCapability("canManageForms")
+
+**Incidents:**
+- POST /api/incidents → requireCapability("canManageIncidents")
+- PATCH /api/incidents/:id → requireCapability("canManageIncidents")
 
 ## Database Schema Details
 
