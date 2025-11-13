@@ -23,6 +23,10 @@ export const incidentSeverityEnum = pgEnum('incident_severity', ['low', 'medium'
 
 export const incidentStatusEnum = pgEnum('incident_status', ['open', 'investigating', 'resolved', 'closed']);
 
+export const accessRequestStatusEnum = pgEnum('access_request_status', ['pending', 'approved', 'denied']);
+
+export const oauthProviderEnum = pgEnum('oauth_provider', ['google', 'github', 'microsoft']);
+
 export const organizations = pgTable("organizations", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   name: text("name").notNull(),
@@ -54,6 +58,8 @@ export const users = pgTable("users", {
   organizationId: integer("organization_id").notNull().references(() => organizations.id),
   replitId: varchar("replit_id").unique(), // Links to Replit Auth sub claim
   email: text("email").notNull().unique(),
+  passwordHash: text("password_hash"), // For email/password auth
+  emailVerified: boolean("email_verified").notNull().default(false),
   name: text("name").notNull(),
   firstName: varchar("first_name"),
   lastName: varchar("last_name"),
@@ -169,3 +175,100 @@ export const insertIncidentSchema = createInsertSchema(incidents).omit({
 });
 export type InsertIncident = z.infer<typeof insertIncidentSchema>;
 export type Incident = typeof incidents.$inferSelect;
+
+// Password Reset Tokens
+export const passwordResets = pgTable("password_resets", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  used: boolean("used").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertPasswordResetSchema = createInsertSchema(passwordResets).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertPasswordReset = z.infer<typeof insertPasswordResetSchema>;
+export type PasswordReset = typeof passwordResets.$inferSelect;
+
+// Email Verification Tokens
+export const emailVerifications = pgTable("email_verifications", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  token: varchar("token", { length: 255 }).notNull().unique(),
+  expiresAt: timestamp("expires_at").notNull(),
+  verified: boolean("verified").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertEmailVerificationSchema = createInsertSchema(emailVerifications).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertEmailVerification = z.infer<typeof insertEmailVerificationSchema>;
+export type EmailVerification = typeof emailVerifications.$inferSelect;
+
+// Access Requests (for users requesting to join organizations)
+export const accessRequests = pgTable("access_requests", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  email: text("email").notNull(),
+  name: text("name").notNull(),
+  message: text("message"),
+  status: accessRequestStatusEnum("status").notNull().default('pending'),
+  reviewedById: integer("reviewed_by_id").references(() => users.id),
+  reviewedAt: timestamp("reviewed_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertAccessRequestSchema = createInsertSchema(accessRequests).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertAccessRequest = z.infer<typeof insertAccessRequestSchema>;
+export type AccessRequest = typeof accessRequests.$inferSelect;
+
+// OAuth Connections (Microsoft, Google, GitHub)
+export const oauthConnections = pgTable("oauth_connections", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  provider: oauthProviderEnum("provider").notNull(),
+  providerUserId: text("provider_user_id").notNull(),
+  accessToken: text("access_token"),
+  refreshToken: text("refresh_token"),
+  tokenExpiresAt: timestamp("token_expires_at"),
+  scope: text("scope"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertOAuthConnectionSchema = createInsertSchema(oauthConnections).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertOAuthConnection = z.infer<typeof insertOAuthConnectionSchema>;
+export type OAuthConnection = typeof oauthConnections.$inferSelect;
+
+// WebAuthn Credentials (Face ID, Touch ID, Windows Hello)
+export const webauthnCredentials = pgTable("webauthn_credentials", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer("user_id").notNull().references(() => users.id),
+  credentialId: text("credential_id").notNull().unique(),
+  publicKey: text("public_key").notNull(),
+  counter: integer("counter").notNull().default(0),
+  deviceType: text("device_type"), // 'platform' (Face ID, Touch ID) or 'cross-platform' (security key)
+  transports: jsonb("transports"), // ['internal', 'usb', 'nfc', 'ble']
+  aaguid: text("aaguid"),
+  lastUsedAt: timestamp("last_used_at"),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertWebAuthnCredentialSchema = createInsertSchema(webauthnCredentials).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertWebAuthnCredential = z.infer<typeof insertWebAuthnCredentialSchema>;
+export type WebAuthnCredential = typeof webauthnCredentials.$inferSelect;
