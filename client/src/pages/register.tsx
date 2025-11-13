@@ -43,7 +43,7 @@ export default function Register() {
     try {
       await apiRequest("/api/auth/register", {
         method: "POST",
-        body: JSON.stringify({ email, password, name }),
+        body: { email, password, name },
       });
 
       toast({

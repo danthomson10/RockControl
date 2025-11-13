@@ -22,7 +22,7 @@ export default function ForgotPassword() {
     try {
       await apiRequest("/api/auth/forgot-password", {
         method: "POST",
-        body: JSON.stringify({ email }),
+        body: { email },
       });
 
       setSubmitted(true);

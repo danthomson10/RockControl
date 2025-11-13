@@ -23,11 +23,11 @@ export default function RequestAccess() {
     try {
       await apiRequest("/api/auth/request-access", {
         method: "POST",
-        body: JSON.stringify({ 
+        body: { 
           email, 
           name, 
-          organizationId: 1 // Default to organization 1 for now
-        }),
+          organizationId: 1 
+        },
       });
 
       setSubmitted(true);

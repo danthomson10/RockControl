@@ -23,7 +23,7 @@ export default function Login() {
     try {
       const response = await apiRequest("/api/auth/login", {
         method: "POST",
-        body: JSON.stringify({ email, password }),
+        body: { email, password },
       });
 
       if (response.user) {
