@@ -16,6 +16,7 @@ import RequestAccess from "@/pages/request-access";
 import Dashboard from "@/pages/dashboard";
 import Forms from "@/pages/forms";
 import Take5Form from "@/pages/take-5-form";
+import VariationForm from "@/pages/variation-form";
 import JobDetailByCode from "@/pages/job-detail-by-code";
 import NotFound from "@/pages/not-found";
 
@@ -52,6 +53,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/forms" component={Forms} />
       <Route path="/forms/take-5" component={Take5Form} />
+      <Route path="/forms/variation" component={VariationForm} />
       <Route path="/jobs/:code" component={JobDetailByCode} />
       <Route component={NotFound} />
     </Switch>

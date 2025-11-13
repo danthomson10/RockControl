@@ -13,6 +13,7 @@ import { z } from "zod";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { hashPassword, verifyPassword, createPasswordResetToken, resetPassword, verifyEmail, resendVerificationEmail, createEmailVerificationToken } from "./passwordAuth";
 import { generateAuthUrl, exchangeCodeForTokens, getUserInfo, validateIdToken } from "./microsoftAuth";
+import { sendTeamsNotification } from "./microsoftTeams";
 import cryptoRandomString from "crypto-random-string";
 import { sendAccessRequestNotification, sendAccessRequestApproved } from "./email";
 
@@ -575,6 +576,67 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(400).json({ error: error.errors });
       }
       res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Variation-specific endpoint with Teams/SharePoint integration
+  app.post("/api/variations", isAuthenticated, async (req: any, res) => {
+    try {
+      const organizationId = await getOrgFromUser(req);
+      const userId = req.session?.userId || req.user?.id;
+      
+      if (!userId) {
+        return res.status(401).json({ error: "User not authenticated" });
+      }
+      
+      const { jobCode, formData, sendToTeams } = req.body;
+      
+      // Find job by code
+      const job = await storage.jobs.getByCode(jobCode, organizationId);
+      if (!job) {
+        return res.status(404).json({ error: "Job not found" });
+      }
+      
+      // Generate unique form code
+      const formCode = `${formData.variationNumber || 'VAR'}-${Date.now()}`;
+      
+      // Create variation form
+      const formPayload: any = {
+        organizationId,
+        jobId: job.id,
+        formCode,
+        type: "variation" as const,
+        status: "pending" as const,
+        formData: formData,
+        submittedById: userId,
+      };
+      
+      const variation = await storage.forms.create(formPayload);
+      
+      // Send Teams notification if enabled
+      if (sendToTeams && formData.variationTitle) {
+        try {
+          await sendTeamsNotification({
+            title: formData.variationTitle,
+            text: formData.description || "No description provided",
+            variationNumber: formData.variationNumber,
+            jobCode: formData.jobCode,
+            category: formData.category,
+            impactType: formData.impactType,
+            costImpact: formData.costImpact,
+            timeImpact: formData.timeImpact,
+            requestedBy: formData.requestedBy,
+          });
+        } catch (teamsError) {
+          console.error("Teams notification failed:", teamsError);
+          // Don't fail the request if Teams notification fails
+        }
+      }
+      
+      res.status(201).json(variation);
+    } catch (error: any) {
+      console.error("Variation submission error:", error);
+      res.status(500).json({ error: error.message || "Failed to submit variation" });
     }
   });
   
