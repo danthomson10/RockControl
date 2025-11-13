@@ -14,6 +14,7 @@ import { setupAuth, isAuthenticated } from "./replitAuth";
 import { hashPassword, verifyPassword, createPasswordResetToken, resetPassword, verifyEmail, resendVerificationEmail, createEmailVerificationToken } from "./passwordAuth";
 import { generateAuthUrl, exchangeCodeForTokens, getUserInfo, validateIdToken } from "./microsoftAuth";
 import { sendTeamsNotification } from "./microsoftTeams";
+import { loadCurrentUser, requireCapability, requireRoles, withAuth } from "./rbac";
 import cryptoRandomString from "crypto-random-string";
 import { sendAccessRequestNotification, sendAccessRequestApproved } from "./email";
 
@@ -34,6 +35,7 @@ setInterval(() => {
 export async function registerRoutes(app: Express): Promise<void> {
   // Setup authentication
   await setupAuth(app);
+  
   
   // Public auth routes (no authentication required)
   
@@ -410,6 +412,7 @@ export async function registerRoutes(app: Express): Promise<void> {
     if (!user) throw new Error("User not found");
     return user.organizationId;
   };
+
   
   app.get("/api/dashboard/stats", isAuthenticated, async (req: any, res) => {
     try {
@@ -478,12 +481,18 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
   
-  app.post("/api/jobs", isAuthenticated, async (req: any, res) => {
+  app.post("/api/jobs", ...withAuth(isAuthenticated), requireCapability("canManageJobs"), async (req: any, res) => {
     try {
-      const organizationId = await getOrgFromUser(req);
+      const user = req.currentUser!;
+      const organizationId = user.organizationId;
       const data = insertJobSchema.parse(req.body);
-      // Enforce tenant isolation - override organizationId from session
-      const job = await storage.jobs.create({ ...data, organizationId });
+      
+      // Enforce tenant isolation - override organizationId and createdById
+      const job = await storage.jobs.create({ 
+        ...data, 
+        organizationId,
+        createdById: user.id 
+      });
       res.status(201).json(job);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -493,9 +502,10 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
   
-  app.patch("/api/jobs/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/jobs/:id", ...withAuth(isAuthenticated), requireCapability("canManageJobs"), async (req: any, res) => {
     try {
-      const organizationId = await getOrgFromUser(req);
+      const user = req.currentUser!;
+      const organizationId = user.organizationId;
       const id = parseInt(req.params.id);
       const data = insertJobSchema.partial().parse(req.body);
       
@@ -542,12 +552,18 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
   
-  app.post("/api/forms", isAuthenticated, async (req: any, res) => {
+  app.post("/api/forms", ...withAuth(isAuthenticated), requireCapability("canManageForms"), async (req: any, res) => {
     try {
-      const organizationId = await getOrgFromUser(req);
+      const user = req.currentUser!;
+      const organizationId = user.organizationId;
       const data = insertFormSchema.parse(req.body);
-      // Enforce tenant isolation - override organizationId from session
-      const form = await storage.forms.create({ ...data, organizationId });
+      
+      // Enforce tenant isolation - override organizationId and submittedById
+      const form = await storage.forms.create({ 
+        ...data, 
+        organizationId,
+        submittedById: user.id 
+      });
       res.status(201).json(form);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -557,9 +573,10 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
   
-  app.patch("/api/forms/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/forms/:id", ...withAuth(isAuthenticated), requireCapability("canManageForms"), async (req: any, res) => {
     try {
-      const organizationId = await getOrgFromUser(req);
+      const user = req.currentUser!;
+      const organizationId = user.organizationId;
       const id = parseInt(req.params.id);
       const data = insertFormSchema.partial().parse(req.body);
       
@@ -579,16 +596,11 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
   
-  // Variation-specific endpoint with Teams/SharePoint integration
-  app.post("/api/variations", isAuthenticated, async (req: any, res) => {
+  // Variation-specific endpoint with Teams/SharePoint integration  
+  app.post("/api/variations", ...withAuth(isAuthenticated), requireCapability("canManageForms"), async (req: any, res) => {
     try {
-      const organizationId = await getOrgFromUser(req);
-      const userId = req.session?.userId || req.user?.id;
-      
-      if (!userId) {
-        return res.status(401).json({ error: "User not authenticated" });
-      }
-      
+      const user = req.currentUser!;
+      const organizationId = user.organizationId;
       const { jobCode, formData, sendToTeams } = req.body;
       
       // Find job by code
@@ -608,7 +620,7 @@ export async function registerRoutes(app: Express): Promise<void> {
         type: "variation" as const,
         status: "pending" as const,
         formData: formData,
-        submittedById: userId,
+        submittedById: user.id,
       };
       
       const variation = await storage.forms.create(formPayload);
@@ -667,12 +679,18 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
   
-  app.post("/api/incidents", isAuthenticated, async (req: any, res) => {
+  app.post("/api/incidents", ...withAuth(isAuthenticated), requireCapability("canManageIncidents"), async (req: any, res) => {
     try {
-      const organizationId = await getOrgFromUser(req);
+      const user = req.currentUser!;
+      const organizationId = user.organizationId;
       const data = insertIncidentSchema.parse(req.body);
-      // Enforce tenant isolation - override organizationId from session
-      const incident = await storage.incidents.create({ ...data, organizationId });
+      
+      // Enforce tenant isolation - override organizationId and reportedById
+      const incident = await storage.incidents.create({ 
+        ...data, 
+        organizationId,
+        reportedById: user.id 
+      });
       res.status(201).json(incident);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -682,9 +700,10 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
   
-  app.patch("/api/incidents/:id", isAuthenticated, async (req: any, res) => {
+  app.patch("/api/incidents/:id", ...withAuth(isAuthenticated), requireCapability("canManageIncidents"), async (req: any, res) => {
     try {
-      const organizationId = await getOrgFromUser(req);
+      const user = req.currentUser!;
+      const organizationId = user.organizationId;
       const id = parseInt(req.params.id);
       const data = insertIncidentSchema.partial().parse(req.body);
       

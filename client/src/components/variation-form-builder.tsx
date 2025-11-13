@@ -10,13 +10,14 @@ import { CheckCircle2, Loader2, Upload } from "lucide-react";
 import { useState } from "react";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
+import { useQuery } from "@tanstack/react-query";
+import type { Job } from "@shared/schema";
 
 export function VariationFormBuilder() {
   const { toast } = useToast();
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selectedJobId, setSelectedJobId] = useState<string>("");
   const [formData, setFormData] = useState({
-    jobCode: "WEL-TUN-001",
-    site: "Mt Victoria, Wellington",
     variationNumber: "",
     variationTitle: "",
     description: "",
@@ -28,17 +29,37 @@ export function VariationFormBuilder() {
     reason: "",
   });
 
+  const { data: jobs } = useQuery<Job[]>({
+    queryKey: ["/api/jobs"],
+  });
+
+  const jobsList = Array.isArray(jobs) ? jobs : [];
+  const selectedJob = jobsList.find(j => j.id.toString() === selectedJobId);
+
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setIsSubmitting(true);
 
     try {
+      if (!selectedJob) {
+        toast({
+          title: "Job Required",
+          description: "Please select a job before submitting",
+          variant: "destructive",
+        });
+        return;
+      }
+
       const response = await apiRequest("/api/variations", {
         method: "POST",
         body: {
-          jobCode: formData.jobCode,
+          jobCode: selectedJob.code,
           type: "variation",
-          formData: formData,
+          formData: {
+            ...formData,
+            jobCode: selectedJob.code,
+            site: selectedJob.siteLocation,
+          },
           sendToTeams: true, // Enable Teams notification
         },
       });
@@ -49,8 +70,8 @@ export function VariationFormBuilder() {
       });
 
       // Reset form
+      setSelectedJobId("");
       setFormData({
-        ...formData,
         variationNumber: "",
         variationTitle: "",
         description: "",
@@ -92,28 +113,25 @@ export function VariationFormBuilder() {
       </CardHeader>
       <CardContent>
         <form onSubmit={handleSubmit} className="space-y-6">
-          <div className="grid gap-4 sm:gap-6 md:grid-cols-2">
-            <div className="space-y-2">
-              <Label htmlFor="job-code">Job Code</Label>
-              <Input 
-                id="job-code" 
-                value={formData.jobCode}
-                onChange={(e) => updateField("jobCode", e.target.value)}
-                readOnly 
-                className="bg-muted"
-                data-testid="input-job-code"
-              />
-            </div>
-            <div className="space-y-2">
-              <Label htmlFor="site">Site</Label>
-              <Input 
-                id="site" 
-                value={formData.site}
-                readOnly 
-                className="bg-muted"
-                data-testid="input-site"
-              />
-            </div>
+          <div className="space-y-2">
+            <Label htmlFor="job-select">Select Job *</Label>
+            <Select value={selectedJobId} onValueChange={setSelectedJobId} required>
+              <SelectTrigger id="job-select" data-testid="select-job">
+                <SelectValue placeholder="Choose a job..." />
+              </SelectTrigger>
+              <SelectContent>
+                {jobsList.map((job) => (
+                  <SelectItem key={job.id} value={job.id.toString()}>
+                    {job.code} - {job.name} ({job.siteLocation})
+                  </SelectItem>
+                ))}
+              </SelectContent>
+            </Select>
+            {selectedJob && (
+              <p className="text-xs text-muted-foreground">
+                Site: {selectedJob.siteLocation}
+              </p>
+            )}
           </div>
 
           <Separator />
