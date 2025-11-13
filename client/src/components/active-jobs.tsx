@@ -3,36 +3,19 @@ import { Badge } from "@/components/ui/badge";
 import { Button } from "@/components/ui/button";
 import { MapPin, Calendar, ChevronRight } from "lucide-react";
 import { Progress } from "@/components/ui/progress";
-
-// todo: remove mock functionality
-const activeJobs = [
-  { 
-    code: "WEL-TUN-001", 
-    name: "Wellington Tunnel Project", 
-    site: "Mt Victoria, Wellington", 
-    progress: 67,
-    dueDate: "Mar 15, 2024",
-    status: "on-track",
-  },
-  { 
-    code: "AKL-BRG-023", 
-    name: "Auckland Bridge Maintenance", 
-    site: "Harbour Bridge, Auckland", 
-    progress: 42,
-    dueDate: "Apr 2, 2024",
-    status: "at-risk",
-  },
-  { 
-    code: "CHC-RD-156", 
-    name: "Christchurch Roadworks", 
-    site: "Main South Road, Christchurch", 
-    progress: 89,
-    dueDate: "Feb 28, 2024",
-    status: "on-track",
-  },
-];
+import { useQuery } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
+import type { Job } from "@shared/schema";
+import { format } from "date-fns";
+import { Link } from "wouter";
 
 export function ActiveJobs() {
+  const { data: jobs, isLoading } = useQuery<Job[]>({
+    queryKey: ["/api/jobs"],
+  });
+
+  const activeJobs = jobs?.filter(job => job.status === 'active') || [];
+
   return (
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
@@ -43,49 +26,65 @@ export function ActiveJobs() {
         </Button>
       </CardHeader>
       <CardContent>
-        <div className="space-y-4">
-          {activeJobs.map((job) => (
-            <div
-              key={job.code}
-              className="p-4 rounded-lg border hover-elevate"
-              data-testid={`job-card-${job.code}`}
-            >
-              <div className="flex items-start justify-between mb-3">
-                <div className="flex-1 min-w-0">
-                  <div className="flex items-center gap-2 mb-1">
-                    <span className="font-mono text-xs text-muted-foreground" data-testid={`job-code-${job.code}`}>
-                      {job.code}
-                    </span>
-                    <Badge 
-                      variant={job.status === "on-track" ? "success" : "warning"}
-                      data-testid={`job-status-${job.code}`}
-                    >
-                      {job.status === "on-track" ? "On Track" : "At Risk"}
-                    </Badge>
+        {isLoading ? (
+          <div className="space-y-4">
+            {[1, 2, 3].map((i) => (
+              <div key={i} className="p-4 border rounded-lg space-y-3">
+                <Skeleton className="h-4 w-32" />
+                <Skeleton className="h-5 w-48" />
+                <Skeleton className="h-3 w-full" />
+                <Skeleton className="h-2 w-full" />
+              </div>
+            ))}
+          </div>
+        ) : (
+          <div className="space-y-4">
+            {activeJobs.map((job) => (
+              <Link key={job.code} href={`/jobs/${job.code}`}>
+                <div
+                  className="p-4 rounded-lg border hover-elevate cursor-pointer"
+                  data-testid={`job-card-${job.code}`}
+                >
+                  <div className="flex items-start justify-between mb-3">
+                    <div className="flex-1 min-w-0">
+                      <div className="flex items-center gap-2 mb-1">
+                        <span className="font-mono text-xs text-muted-foreground" data-testid={`job-code-${job.code}`}>
+                          {job.code}
+                        </span>
+                        <Badge 
+                          variant={job.progress >= 80 ? "success" : job.progress >= 50 ? "secondary" : "warning"}
+                          data-testid={`job-status-${job.code}`}
+                        >
+                          {job.status}
+                        </Badge>
+                      </div>
+                      <h4 className="font-semibold text-sm mb-2">{job.name}</h4>
+                      <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
+                        <div className="flex items-center gap-1">
+                          <MapPin className="h-3 w-3" />
+                          <span>{job.siteLocation}</span>
+                        </div>
+                        {job.dueDate && (
+                          <div className="flex items-center gap-1">
+                            <Calendar className="h-3 w-3" />
+                            <span>Due {format(new Date(job.dueDate), "MMM d, yyyy")}</span>
+                          </div>
+                        )}
+                      </div>
+                    </div>
                   </div>
-                  <h4 className="font-semibold text-sm mb-2">{job.name}</h4>
-                  <div className="flex flex-wrap gap-3 text-xs text-muted-foreground">
-                    <div className="flex items-center gap-1">
-                      <MapPin className="h-3 w-3" />
-                      <span>{job.site}</span>
+                  <div className="space-y-2">
+                    <div className="flex items-center justify-between text-xs">
+                      <span className="text-muted-foreground">Progress</span>
+                      <span className="font-medium">{job.progress}%</span>
                     </div>
-                    <div className="flex items-center gap-1">
-                      <Calendar className="h-3 w-3" />
-                      <span>Due {job.dueDate}</span>
-                    </div>
+                    <Progress value={job.progress} className="h-2" />
                   </div>
                 </div>
-              </div>
-              <div className="space-y-2">
-                <div className="flex items-center justify-between text-xs">
-                  <span className="text-muted-foreground">Progress</span>
-                  <span className="font-medium">{job.progress}%</span>
-                </div>
-                <Progress value={job.progress} className="h-2" />
-              </div>
-            </div>
-          ))}
-        </div>
+              </Link>
+            ))}
+          </div>
+        )}
       </CardContent>
     </Card>
   );

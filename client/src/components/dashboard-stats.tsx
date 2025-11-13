@@ -1,42 +1,58 @@
 import { Card, CardContent, CardHeader, CardTitle } from "@/components/ui/card";
-import { Briefcase, FileText, AlertTriangle, CheckCircle2, TrendingUp, TrendingDown } from "lucide-react";
-
-// todo: remove mock functionality
-const stats = [
-  {
-    title: "Active Jobs",
-    value: "24",
-    change: "+3 this week",
-    trend: "up" as const,
-    icon: Briefcase,
-  },
-  {
-    title: "Forms Pending",
-    value: "12",
-    change: "-5 from yesterday",
-    trend: "down" as const,
-    icon: FileText,
-  },
-  {
-    title: "Open Incidents",
-    value: "3",
-    change: "No change",
-    trend: "neutral" as const,
-    icon: AlertTriangle,
-  },
-  {
-    title: "Compliance Rate",
-    value: "98%",
-    change: "+2% this month",
-    trend: "up" as const,
-    icon: CheckCircle2,
-  },
-];
+import { Briefcase, FileText, AlertTriangle, CheckCircle2 } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import { Skeleton } from "@/components/ui/skeleton";
 
 export function DashboardStats() {
+  const { data: stats, isLoading } = useQuery({
+    queryKey: ["/api/dashboard/stats"],
+  });
+
+  if (isLoading) {
+    return (
+      <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
+        {[1, 2, 3, 4].map((i) => (
+          <Card key={i}>
+            <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
+              <Skeleton className="h-4 w-24" />
+              <Skeleton className="h-4 w-4 rounded" />
+            </CardHeader>
+            <CardContent>
+              <Skeleton className="h-8 w-16 mb-2" />
+              <Skeleton className="h-3 w-32" />
+            </CardContent>
+          </Card>
+        ))}
+      </div>
+    );
+  }
+
+  const statCards = [
+    {
+      title: "Active Jobs",
+      value: stats?.activeJobs?.toString() || "0",
+      icon: Briefcase,
+    },
+    {
+      title: "Forms Pending",
+      value: stats?.formsPending?.toString() || "0",
+      icon: FileText,
+    },
+    {
+      title: "Open Incidents",
+      value: stats?.openIncidents?.toString() || "0",
+      icon: AlertTriangle,
+    },
+    {
+      title: "Compliance Rate",
+      value: `${stats?.complianceRate || 0}%`,
+      icon: CheckCircle2,
+    },
+  ];
+
   return (
     <div className="grid gap-4 md:grid-cols-2 lg:grid-cols-4">
-      {stats.map((stat) => (
+      {statCards.map((stat) => (
         <Card key={stat.title} data-testid={`stat-card-${stat.title.toLowerCase().replace(/\s/g, '-')}`}>
           <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
             <CardTitle className="text-sm font-medium">{stat.title}</CardTitle>
@@ -45,13 +61,6 @@ export function DashboardStats() {
           <CardContent>
             <div className="text-2xl font-bold" data-testid={`stat-value-${stat.title.toLowerCase().replace(/\s/g, '-')}`}>
               {stat.value}
-            </div>
-            <div className="flex items-center gap-1 mt-1">
-              {stat.trend === "up" && <TrendingUp className="h-3 w-3 text-success" />}
-              {stat.trend === "down" && <TrendingDown className="h-3 w-3 text-success" />}
-              <p className={`text-xs ${stat.trend === "neutral" ? "text-muted-foreground" : "text-success"}`}>
-                {stat.change}
-              </p>
             </div>
           </CardContent>
         </Card>

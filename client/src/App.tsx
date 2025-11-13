@@ -8,7 +8,7 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { TopBar } from "@/components/top-bar";
 import Dashboard from "@/pages/dashboard";
 import Forms from "@/pages/forms";
-import JobDetail from "@/pages/job-detail";
+import JobDetailByCode from "@/pages/job-detail-by-code";
 import NotFound from "@/pages/not-found";
 
 function Router() {
@@ -16,7 +16,7 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/forms" component={Forms} />
-      <Route path="/jobs/:id" component={JobDetail} />
+      <Route path="/jobs/:code" component={JobDetailByCode} />
       <Route component={NotFound} />
     </Switch>
   );

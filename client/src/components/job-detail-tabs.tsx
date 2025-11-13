@@ -1,10 +1,20 @@
 import { Tabs, TabsContent, TabsList, TabsTrigger } from "@/components/ui/tabs";
 import { Card, CardContent } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Button } from "@/components/ui/button";
 import { FileText, MapPin, MessageSquare, Folder, Calendar, Users } from "lucide-react";
+import { useQuery } from "@tanstack/react-query";
+import type { Job } from "@shared/schema";
+import { format } from "date-fns";
 
-export function JobDetailTabs() {
+interface JobDetailTabsProps {
+  jobId: number;
+}
+
+export function JobDetailTabs({ jobId }: JobDetailTabsProps) {
+  const { data: job } = useQuery<Job>({
+    queryKey: ["/api/jobs", jobId],
+    queryFn: () => fetch(`/api/jobs/${jobId}`).then(r => r.json()),
+  });
   return (
     <Tabs defaultValue="overview" className="w-full">
       <TabsList className="grid w-full grid-cols-6">
@@ -43,24 +53,30 @@ export function JobDetailTabs() {
                 <dl className="grid grid-cols-2 gap-4 text-sm">
                   <div>
                     <dt className="text-muted-foreground mb-1">Job Code</dt>
-                    <dd className="font-mono">WEL-TUN-001</dd>
+                    <dd className="font-mono">{job?.code}</dd>
                   </div>
                   <div>
                     <dt className="text-muted-foreground mb-1">Status</dt>
-                    <dd><Badge variant="success">Active</Badge></dd>
+                    <dd><Badge variant={job?.status === 'active' ? "success" : "secondary"}>{job?.status}</Badge></dd>
                   </div>
-                  <div>
-                    <dt className="text-muted-foreground mb-1">Start Date</dt>
-                    <dd>Jan 15, 2024</dd>
-                  </div>
-                  <div>
-                    <dt className="text-muted-foreground mb-1">Due Date</dt>
-                    <dd>Mar 15, 2024</dd>
-                  </div>
-                  <div className="col-span-2">
-                    <dt className="text-muted-foreground mb-1">Description</dt>
-                    <dd>Tunnel excavation and reinforcement works for the Wellington Northern Corridor improvement project.</dd>
-                  </div>
+                  {job?.startDate && (
+                    <div>
+                      <dt className="text-muted-foreground mb-1">Start Date</dt>
+                      <dd>{format(new Date(job.startDate), "MMM d, yyyy")}</dd>
+                    </div>
+                  )}
+                  {job?.dueDate && (
+                    <div>
+                      <dt className="text-muted-foreground mb-1">Due Date</dt>
+                      <dd>{format(new Date(job.dueDate), "MMM d, yyyy")}</dd>
+                    </div>
+                  )}
+                  {job?.description && (
+                    <div className="col-span-2">
+                      <dt className="text-muted-foreground mb-1">Description</dt>
+                      <dd>{job.description}</dd>
+                    </div>
+                  )}
                 </dl>
               </div>
 
@@ -70,7 +86,7 @@ export function JobDetailTabs() {
                   Team Members
                 </h3>
                 <div className="space-y-2">
-                  {["Sarah Wilson (Project Manager)", "Mike Chen (Site Supervisor)", "John Doe (Site Supervisor)"].map((member) => (
+                  {["Sarah Wilson (Project Manager)", "Mike Chen (HSE Manager)", "John Doe (Site Supervisor)"].map((member) => (
                     <div key={member} className="flex items-center gap-2 text-sm p-2 rounded-md hover-elevate">
                       <div className="h-8 w-8 rounded-full bg-primary text-primary-foreground flex items-center justify-center text-xs">
                         {member.split(" ").map(n => n[0]).join("")}
