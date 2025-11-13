@@ -395,6 +395,14 @@ export async function registerRoutes(app: Express): Promise<void> {
   
   // Helper to get organization ID from authenticated user
   const getOrgFromUser = async (req: any): Promise<number> => {
+    // Support email/password or Microsoft SSO authentication
+    if (req.session && req.session.userId) {
+      const user = await storage.users.getById(req.session.userId);
+      if (!user) throw new Error("User not found");
+      return user.organizationId;
+    }
+
+    // Support Replit OAuth authentication
     const replitId = req.user?.claims?.sub;
     if (!replitId) throw new Error("User not authenticated");
     const user = await storage.users.getByReplitId(replitId);

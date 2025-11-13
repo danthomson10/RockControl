@@ -131,7 +131,13 @@ export async function setupAuth(app: Express) {
   });
 }
 
-export const isAuthenticated: RequestHandler = async (req, res, next) => {
+export const isAuthenticated: RequestHandler = async (req: any, res, next) => {
+  // Support both email/password auth (session.userId) and Replit OAuth (req.user)
+  if (req.session && req.session.userId) {
+    // Email/password or Microsoft SSO authentication
+    return next();
+  }
+
   const user = req.user as any;
 
   if (!req.isAuthenticated() || !user.expires_at) {

@@ -25,8 +25,17 @@ const formTypeLabels: Record<string, string> = {
 export function RecentForms() {
   const { data: forms, isLoading } = useQuery<Form[]>({
     queryKey: ["/api/forms"],
-    queryFn: () => fetch("/api/forms?limit=4").then(r => r.json()),
+    queryFn: async () => {
+      const res = await fetch("/api/forms?limit=4", { credentials: "include" });
+      if (!res.ok) {
+        return [];
+      }
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    },
   });
+
+  const formsList = Array.isArray(forms) ? forms : [];
 
   return (
     <Card>
@@ -51,9 +60,13 @@ export function RecentForms() {
               </div>
             ))}
           </div>
+        ) : formsList.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground text-sm">
+            No forms yet
+          </div>
         ) : (
           <div className="space-y-3">
-            {forms?.map((form) => (
+            {formsList.map((form) => (
               <div
                 key={form.id}
                 className="flex items-center justify-between p-3 rounded-lg border hover-elevate"

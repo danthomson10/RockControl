@@ -7,9 +7,13 @@ async function throwIfResNotOk(res: Response) {
   }
 }
 
+interface ApiRequestOptions extends Omit<RequestInit, 'body'> {
+  body?: any;
+}
+
 export async function apiRequest(
   url: string,
-  options?: RequestInit & { body?: any },
+  options?: ApiRequestOptions,
 ): Promise<any> {
   const res = await fetch(url, {
     ...options,

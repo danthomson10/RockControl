@@ -12,9 +12,18 @@ import { Link } from "wouter";
 export function ActiveJobs() {
   const { data: jobs, isLoading } = useQuery<Job[]>({
     queryKey: ["/api/jobs"],
+    queryFn: async () => {
+      const res = await fetch("/api/jobs", { credentials: "include" });
+      if (!res.ok) {
+        return [];
+      }
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    },
   });
 
-  const activeJobs = jobs?.filter(job => job.status === 'active') || [];
+  const jobsList = Array.isArray(jobs) ? jobs : [];
+  const activeJobs = jobsList.filter(job => job.status === 'active');
 
   return (
     <Card>
@@ -36,6 +45,10 @@ export function ActiveJobs() {
                 <Skeleton className="h-2 w-full" />
               </div>
             ))}
+          </div>
+        ) : activeJobs.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground text-sm">
+            No active jobs
           </div>
         ) : (
           <div className="space-y-4">

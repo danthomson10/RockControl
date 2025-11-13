@@ -17,8 +17,17 @@ const severityVariant: Record<string, "destructive" | "warning" | "secondary"> =
 export function IncidentAlerts() {
   const { data: incidents, isLoading } = useQuery<Incident[]>({
     queryKey: ["/api/incidents"],
-    queryFn: () => fetch("/api/incidents?limit=3").then(r => r.json()),
+    queryFn: async () => {
+      const res = await fetch("/api/incidents?limit=3", { credentials: "include" });
+      if (!res.ok) {
+        return [];
+      }
+      const data = await res.json();
+      return Array.isArray(data) ? data : [];
+    },
   });
+
+  const incidentsList = Array.isArray(incidents) ? incidents : [];
 
   return (
     <Card>
@@ -43,9 +52,13 @@ export function IncidentAlerts() {
               </div>
             ))}
           </div>
+        ) : incidentsList.length === 0 ? (
+          <div className="text-center py-8 text-muted-foreground text-sm">
+            No incidents reported
+          </div>
         ) : (
           <div className="space-y-3">
-            {incidents?.map((incident) => (
+            {incidentsList.map((incident) => (
               <div
                 key={incident.id}
                 className="flex items-start gap-3 p-3 rounded-lg border hover-elevate"
