@@ -2,12 +2,44 @@ import type { Express } from "express";
 import { storage } from "./storage";
 import { insertJobSchema, insertFormSchema, insertIncidentSchema } from "@shared/schema";
 import { z } from "zod";
+import { setupAuth, isAuthenticated } from "./replitAuth";
 
-export function registerRoutes(app: Express) {
+export async function registerRoutes(app: Express): Promise<void> {
+  // Setup authentication
+  await setupAuth(app);
   
-  app.get("/api/dashboard/stats", async (req, res) => {
+  // Auth routes
+  app.get('/api/auth/user', isAuthenticated, async (req: any, res) => {
     try {
-      const organizationId = 1; // todo: Get from authenticated user session
+      const replitId = req.user.claims.sub;
+      const user = await storage.users.getByReplitId(replitId);
+      
+      if (!user) {
+        // User authenticated with Replit but not in database yet
+        // This should not happen if upsertUser works correctly, but handle gracefully
+        console.warn(`Authenticated user ${replitId} not found in database`);
+        return res.status(401).json({ message: "User not found" });
+      }
+      
+      res.json(user);
+    } catch (error) {
+      console.error("Error fetching user:", error);
+      res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+  
+  // Helper to get organization ID from authenticated user
+  const getOrgFromUser = async (req: any): Promise<number> => {
+    const replitId = req.user?.claims?.sub;
+    if (!replitId) throw new Error("User not authenticated");
+    const user = await storage.users.getByReplitId(replitId);
+    if (!user) throw new Error("User not found");
+    return user.organizationId;
+  };
+  
+  app.get("/api/dashboard/stats", isAuthenticated, async (req: any, res) => {
+    try {
+      const organizationId = await getOrgFromUser(req);
       
       const [jobStats, formStats, incidentStats] = await Promise.all([
         storage.jobs.getStats(organizationId),
@@ -26,9 +58,9 @@ export function registerRoutes(app: Express) {
     }
   });
   
-  app.get("/api/jobs", async (req, res) => {
+  app.get("/api/jobs", isAuthenticated, async (req: any, res) => {
     try {
-      const organizationId = 1; // todo: Get from authenticated user session
+      const organizationId = await getOrgFromUser(req);
       const jobs = await storage.jobs.getByOrganization(organizationId);
       res.json(jobs);
     } catch (error: any) {
@@ -36,9 +68,9 @@ export function registerRoutes(app: Express) {
     }
   });
   
-  app.get("/api/jobs/code/:code", async (req, res) => {
+  app.get("/api/jobs/code/:code", isAuthenticated, async (req: any, res) => {
     try {
-      const organizationId = 1; // todo: Get from authenticated user session
+      const organizationId = await getOrgFromUser(req);
       const code = req.params.code;
       const job = await storage.jobs.getByCode(code, organizationId);
       
@@ -54,12 +86,13 @@ export function registerRoutes(app: Express) {
     }
   });
   
-  app.get("/api/jobs/:id", async (req, res) => {
+  app.get("/api/jobs/:id", isAuthenticated, async (req: any, res) => {
     try {
+      const organizationId = await getOrgFromUser(req);
       const id = parseInt(req.params.id);
       const job = await storage.jobs.getById(id);
       
-      if (!job) {
+      if (!job || job.organizationId !== organizationId) {
         return res.status(404).json({ error: "Job not found" });
       }
       
@@ -71,7 +104,7 @@ export function registerRoutes(app: Express) {
     }
   });
   
-  app.post("/api/jobs", async (req, res) => {
+  app.post("/api/jobs", isAuthenticated, async (req: any, res) => {
     try {
       const data = insertJobSchema.parse(req.body);
       const job = await storage.jobs.create(data);
@@ -84,7 +117,7 @@ export function registerRoutes(app: Express) {
     }
   });
   
-  app.patch("/api/jobs/:id", async (req, res) => {
+  app.patch("/api/jobs/:id", isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const data = insertJobSchema.partial().parse(req.body);
@@ -103,9 +136,9 @@ export function registerRoutes(app: Express) {
     }
   });
   
-  app.get("/api/forms", async (req, res) => {
+  app.get("/api/forms", isAuthenticated, async (req: any, res) => {
     try {
-      const organizationId = 1; // todo: Get from authenticated user session
+      const organizationId = await getOrgFromUser(req);
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       const forms = await storage.forms.getByOrganization(organizationId, limit);
       res.json(forms);
@@ -114,7 +147,7 @@ export function registerRoutes(app: Express) {
     }
   });
   
-  app.get("/api/forms/:id", async (req, res) => {
+  app.get("/api/forms/:id", isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const form = await storage.forms.getById(id);
@@ -129,7 +162,7 @@ export function registerRoutes(app: Express) {
     }
   });
   
-  app.post("/api/forms", async (req, res) => {
+  app.post("/api/forms", isAuthenticated, async (req: any, res) => {
     try {
       const data = insertFormSchema.parse(req.body);
       const form = await storage.forms.create(data);
@@ -142,7 +175,7 @@ export function registerRoutes(app: Express) {
     }
   });
   
-  app.patch("/api/forms/:id", async (req, res) => {
+  app.patch("/api/forms/:id", isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const data = insertFormSchema.partial().parse(req.body);
@@ -161,9 +194,9 @@ export function registerRoutes(app: Express) {
     }
   });
   
-  app.get("/api/incidents", async (req, res) => {
+  app.get("/api/incidents", isAuthenticated, async (req: any, res) => {
     try {
-      const organizationId = 1; // todo: Get from authenticated user session
+      const organizationId = await getOrgFromUser(req);
       const limit = req.query.limit ? parseInt(req.query.limit as string) : undefined;
       const incidents = await storage.incidents.getByOrganization(organizationId, limit);
       res.json(incidents);
@@ -172,7 +205,7 @@ export function registerRoutes(app: Express) {
     }
   });
   
-  app.get("/api/incidents/:id", async (req, res) => {
+  app.get("/api/incidents/:id", isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const incident = await storage.incidents.getById(id);
@@ -187,7 +220,7 @@ export function registerRoutes(app: Express) {
     }
   });
   
-  app.post("/api/incidents", async (req, res) => {
+  app.post("/api/incidents", isAuthenticated, async (req: any, res) => {
     try {
       const data = insertIncidentSchema.parse(req.body);
       const incident = await storage.incidents.create(data);
@@ -200,7 +233,7 @@ export function registerRoutes(app: Express) {
     }
   });
   
-  app.patch("/api/incidents/:id", async (req, res) => {
+  app.patch("/api/incidents/:id", isAuthenticated, async (req: any, res) => {
     try {
       const id = parseInt(req.params.id);
       const data = insertIncidentSchema.partial().parse(req.body);

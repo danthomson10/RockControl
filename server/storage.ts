@@ -10,6 +10,7 @@ import {
   type Organization,
   type InsertUser,
   type User,
+  type UpsertUser,
   type InsertJob,
   type Job,
   type InsertJobMember,
@@ -30,8 +31,10 @@ export interface IStorage {
   users: {
     create(data: InsertUser): Promise<User>;
     getById(id: number): Promise<User | undefined>;
+    getByReplitId(replitId: string): Promise<User | undefined>;
     getByEmail(email: string): Promise<User | undefined>;
     getByOrganization(organizationId: number): Promise<User[]>;
+    upsertUser(data: UpsertUser): Promise<User>;
   };
   
   jobs: {
@@ -103,6 +106,11 @@ export class DatabaseStorage implements IStorage {
       return user;
     },
     
+    getByReplitId: async (replitId: string): Promise<User | undefined> => {
+      const [user] = await db.select().from(users).where(eq(users.replitId, replitId));
+      return user;
+    },
+    
     getByEmail: async (email: string): Promise<User | undefined> => {
       const [user] = await db.select().from(users).where(eq(users.email, email));
       return user;
@@ -110,6 +118,48 @@ export class DatabaseStorage implements IStorage {
     
     getByOrganization: async (organizationId: number): Promise<User[]> => {
       return db.select().from(users).where(eq(users.organizationId, organizationId));
+    },
+    
+    upsertUser: async (data: UpsertUser): Promise<User> => {
+      // Find existing user by replit ID or email
+      const existingUser = await this.users.getByReplitId(data.replitId) || 
+                           (data.email ? await this.users.getByEmail(data.email) : null);
+      
+      if (existingUser) {
+        // Update existing user
+        const fullName = [data.firstName, data.lastName].filter(Boolean).join(' ') || existingUser.name;
+        const [user] = await db.update(users)
+          .set({
+            replitId: data.replitId,
+            email: data.email || existingUser.email,
+            firstName: data.firstName || existingUser.firstName,
+            lastName: data.lastName || existingUser.lastName,
+            profileImageUrl: data.profileImageUrl || existingUser.profileImageUrl,
+            name: fullName,
+            updatedAt: new Date(),
+          })
+          .where(eq(users.id, existingUser.id))
+          .returning();
+        return user;
+      } else {
+        // Create new user - assign to a default organization (org 1) and default role
+        // TODO: Implement invitation system to assign proper org and role
+        const fullName = [data.firstName, data.lastName].filter(Boolean).join(' ') || data.email || 'New User';
+        const [user] = await db.insert(users)
+          .values({
+            replitId: data.replitId,
+            organizationId: 1, // Default org - TODO: implement invite-based assignment
+            email: data.email || '',
+            name: fullName,
+            firstName: data.firstName,
+            lastName: data.lastName,
+            profileImageUrl: data.profileImageUrl,
+            role: 'FieldTech', // Default role - TODO: implement invite-based assignment
+            active: true,
+          })
+          .returning();
+        return user;
+      }
     },
   };
   

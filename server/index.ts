@@ -50,7 +50,8 @@ app.use((req, res, next) => {
 (async () => {
   const server = createServer(app);
   
-  registerRoutes(app);
+  // Register routes with auth
+  await registerRoutes(app);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
