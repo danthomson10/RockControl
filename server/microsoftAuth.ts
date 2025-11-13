@@ -1,29 +1,20 @@
-import { Issuer, generators, type BaseClient } from 'openid-client';
+import cryptoRandomString from 'crypto-random-string';
+import crypto from 'crypto';
 
-let microsoftClient: BaseClient | null = null;
+function base64URLEncode(buffer: Buffer): string {
+  return buffer.toString('base64')
+    .replace(/\+/g, '-')
+    .replace(/\//g, '_')
+    .replace(/=/g, '');
+}
 
-export async function getMicrosoftClient() {
-  if (microsoftClient) {
-    return microsoftClient;
-  }
-
-  const microsoftIssuer = await Issuer.discover(
-    `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID}/v2.0`
-  );
-
-  microsoftClient = new microsoftIssuer.Client({
-    client_id: process.env.MICROSOFT_CLIENT_ID!,
-    client_secret: process.env.MICROSOFT_CLIENT_SECRET!,
-    redirect_uris: [`${process.env.APP_URL || 'http://localhost:5000'}/api/auth/microsoft/callback`],
-    response_types: ['code'],
-  });
-
-  return microsoftClient;
+function sha256(buffer: string): Buffer {
+  return crypto.createHash('sha256').update(buffer).digest();
 }
 
 export function generateAuthUrl(state: string, nonce: string) {
-  const codeVerifier = generators.codeVerifier();
-  const codeChallenge = generators.codeChallenge(codeVerifier);
+  const codeVerifier = cryptoRandomString({ length: 64, type: 'url-safe' });
+  const codeChallenge = base64URLEncode(sha256(codeVerifier));
 
   return {
     authUrl: `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID}/oauth2/v2.0/authorize?` +
@@ -41,15 +32,31 @@ export function generateAuthUrl(state: string, nonce: string) {
 }
 
 export async function exchangeCodeForTokens(code: string, codeVerifier: string) {
-  const client = await getMicrosoftClient();
+  const tokenUrl = `https://login.microsoftonline.com/${process.env.MICROSOFT_TENANT_ID}/oauth2/v2.0/token`;
   
-  const tokenSet = await client.callback(
-    `${process.env.APP_URL || 'http://localhost:5000'}/api/auth/microsoft/callback`,
-    { code },
-    { code_verifier: codeVerifier }
-  );
+  const params = new URLSearchParams({
+    client_id: process.env.MICROSOFT_CLIENT_ID!,
+    client_secret: process.env.MICROSOFT_CLIENT_SECRET!,
+    code,
+    redirect_uri: `${process.env.APP_URL || 'http://localhost:5000'}/api/auth/microsoft/callback`,
+    grant_type: 'authorization_code',
+    code_verifier: codeVerifier,
+  });
 
-  return tokenSet;
+  const response = await fetch(tokenUrl, {
+    method: 'POST',
+    headers: {
+      'Content-Type': 'application/x-www-form-urlencoded',
+    },
+    body: params.toString(),
+  });
+
+  if (!response.ok) {
+    const error = await response.text();
+    throw new Error(`Token exchange failed: ${error}`);
+  }
+
+  return response.json();
 }
 
 export async function getUserInfo(accessToken: string) {

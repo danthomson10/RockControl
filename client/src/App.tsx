@@ -8,6 +8,11 @@ import { AppSidebar } from "@/components/app-sidebar";
 import { TopBar } from "@/components/top-bar";
 import { useAuth } from "@/hooks/useAuth";
 import Landing from "@/pages/landing";
+import Login from "@/pages/login";
+import Register from "@/pages/register";
+import ForgotPassword from "@/pages/forgot-password";
+import ResetPassword from "@/pages/reset-password";
+import RequestAccess from "@/pages/request-access";
 import Dashboard from "@/pages/dashboard";
 import Forms from "@/pages/forms";
 import JobDetailByCode from "@/pages/job-detail-by-code";
@@ -31,6 +36,11 @@ function Router() {
     return (
       <Switch>
         <Route path="/" component={Landing} />
+        <Route path="/login" component={Login} />
+        <Route path="/register" component={Register} />
+        <Route path="/forgot-password" component={ForgotPassword} />
+        <Route path="/reset-password" component={ResetPassword} />
+        <Route path="/request-access" component={RequestAccess} />
         <Route component={Landing} />
       </Switch>
     );
