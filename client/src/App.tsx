@@ -18,6 +18,7 @@ import Forms from "@/pages/forms";
 import Take5Form from "@/pages/take-5-form";
 import VariationForm from "@/pages/variation-form";
 import Jobs from "@/pages/jobs";
+import Sites from "@/pages/sites";
 import JobDetailByCode from "@/pages/job-detail-by-code";
 import NotFound from "@/pages/not-found";
 
@@ -57,6 +58,7 @@ function Router() {
       <Route path="/forms/variation" component={VariationForm} />
       <Route path="/jobs" component={Jobs} />
       <Route path="/jobs/:code" component={JobDetailByCode} />
+      <Route path="/sites" component={Sites} />
       <Route component={NotFound} />
     </Switch>
   );

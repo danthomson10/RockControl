@@ -2,6 +2,10 @@ import { db } from "./db";
 import {
   organizations,
   users,
+  clients,
+  sites,
+  siteContacts,
+  siteFiles,
   jobs,
   jobMembers,
   forms,
@@ -13,6 +17,14 @@ import {
   type InsertUser,
   type User,
   type UpsertUser,
+  type InsertClient,
+  type Client,
+  type InsertSite,
+  type Site,
+  type InsertSiteContact,
+  type SiteContact,
+  type InsertSiteFile,
+  type SiteFile,
   type InsertJob,
   type Job,
   type InsertJobMember,
@@ -55,6 +67,47 @@ export interface IStorage {
     create(data: InsertOAuthConnection): Promise<OAuthConnection>;
     getByUserAndProvider(userId: number, provider: 'google' | 'github' | 'microsoft'): Promise<OAuthConnection | undefined>;
     update(id: number, data: Partial<InsertOAuthConnection>): Promise<OAuthConnection | undefined>;
+  };
+  
+  clients: {
+    create(data: InsertClient): Promise<Client>;
+    getById(id: number): Promise<Client | undefined>;
+    getByIdScoped(id: number, organizationId: number): Promise<Client | undefined>;
+    getByOrganization(organizationId: number, includeInactive?: boolean): Promise<Client[]>;
+    update(id: number, organizationId: number, data: Partial<Omit<InsertClient, 'organizationId'>>): Promise<Client | undefined>;
+    archive(id: number, organizationId: number): Promise<Client | undefined>;
+  };
+  
+  sites: {
+    create(data: InsertSite): Promise<Site>;
+    getById(id: number): Promise<Site | undefined>;
+    getByIdScoped(id: number, organizationId: number): Promise<Site | undefined>;
+    getByOrganization(organizationId: number, filters?: { status?: 'active' | 'completed' | 'archived'; clientId?: number; search?: string }): Promise<Site[]>;
+    getByClient(organizationId: number, clientId: number): Promise<Site[]>;
+    getByStatus(organizationId: number, statuses: ('active' | 'completed' | 'archived')[]): Promise<Site[]>;
+    getRecent(organizationId: number, limit: number): Promise<Site[]>;
+    update(id: number, data: Partial<Omit<InsertSite, 'organizationId' | 'createdById'>>): Promise<Site | undefined>;
+    updateScoped(id: number, organizationId: number, data: Partial<Omit<InsertSite, 'organizationId' | 'createdById'>>): Promise<Site | undefined>;
+    getStats(organizationId: number): Promise<{
+      total: number;
+      active: number;
+      completed: number;
+      archived: number;
+    }>;
+  };
+  
+  siteContacts: {
+    create(data: InsertSiteContact): Promise<SiteContact>;
+    getBySite(siteId: number): Promise<SiteContact[]>;
+    getBySiteScoped(siteId: number, organizationId: number): Promise<SiteContact[]>;
+    delete(id: number, organizationId: number): Promise<void>;
+  };
+  
+  siteFiles: {
+    create(data: InsertSiteFile): Promise<SiteFile>;
+    getBySite(siteId: number, fileType?: 'image' | 'drone' | 'contract' | 'document'): Promise<SiteFile[]>;
+    getBySiteScoped(siteId: number, organizationId: number, fileType?: 'image' | 'drone' | 'contract' | 'document'): Promise<SiteFile[]>;
+    delete(id: number, organizationId: number): Promise<void>;
   };
   
   jobs: {
@@ -246,6 +299,231 @@ export class DatabaseStorage implements IStorage {
         .where(eq(oauthConnections.id, id))
         .returning();
       return connection;
+    },
+  };
+  
+  clients = {
+    create: async (data: InsertClient): Promise<Client> => {
+      const [client] = await db.insert(clients).values(data).returning();
+      return client;
+    },
+    
+    getById: async (id: number): Promise<Client | undefined> => {
+      const [client] = await db.select().from(clients).where(eq(clients.id, id));
+      return client;
+    },
+    
+    getByIdScoped: async (id: number, organizationId: number): Promise<Client | undefined> => {
+      const [client] = await db.select().from(clients)
+        .where(and(eq(clients.id, id), eq(clients.organizationId, organizationId)));
+      return client;
+    },
+    
+    getByOrganization: async (organizationId: number, includeInactive?: boolean): Promise<Client[]> => {
+      if (includeInactive) {
+        return db.select().from(clients)
+          .where(eq(clients.organizationId, organizationId))
+          .orderBy(desc(clients.createdAt));
+      }
+      return db.select().from(clients)
+        .where(and(eq(clients.organizationId, organizationId), eq(clients.active, true)))
+        .orderBy(desc(clients.createdAt));
+    },
+    
+    update: async (id: number, organizationId: number, data: Partial<Omit<InsertClient, 'organizationId'>>): Promise<Client | undefined> => {
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined) {
+          updates[key] = value;
+        }
+      });
+      
+      const [client] = await db.update(clients)
+        .set(updates)
+        .where(and(eq(clients.id, id), eq(clients.organizationId, organizationId)))
+        .returning();
+      return client;
+    },
+    
+    archive: async (id: number, organizationId: number): Promise<Client | undefined> => {
+      const [client] = await db.update(clients)
+        .set({ active: false, updatedAt: new Date() })
+        .where(and(eq(clients.id, id), eq(clients.organizationId, organizationId)))
+        .returning();
+      return client;
+    },
+  };
+  
+  sites = {
+    create: async (data: InsertSite): Promise<Site> => {
+      const [site] = await db.insert(sites).values(data).returning();
+      return site;
+    },
+    
+    getById: async (id: number): Promise<Site | undefined> => {
+      const [site] = await db.select().from(sites).where(eq(sites.id, id));
+      return site;
+    },
+    
+    getByIdScoped: async (id: number, organizationId: number): Promise<Site | undefined> => {
+      const [site] = await db.select().from(sites)
+        .where(and(eq(sites.id, id), eq(sites.organizationId, organizationId)));
+      return site;
+    },
+    
+    getByOrganization: async (organizationId: number, filters?: { status?: 'active' | 'completed' | 'archived'; clientId?: number; search?: string }): Promise<Site[]> => {
+      const conditions = [eq(sites.organizationId, organizationId)];
+      
+      if (filters?.status) {
+        conditions.push(eq(sites.status, filters.status));
+      }
+      
+      if (filters?.clientId) {
+        conditions.push(eq(sites.clientId, filters.clientId));
+      }
+      
+      const query = db.select().from(sites)
+        .where(and(...conditions))
+        .orderBy(desc(sites.createdAt));
+      
+      const results = await query;
+      
+      if (filters?.search) {
+        const searchLower = filters.search.toLowerCase();
+        return results.filter(site => 
+          site.name.toLowerCase().includes(searchLower) ||
+          site.address.toLowerCase().includes(searchLower) ||
+          site.description?.toLowerCase().includes(searchLower)
+        );
+      }
+      
+      return results;
+    },
+    
+    getByClient: async (organizationId: number, clientId: number): Promise<Site[]> => {
+      return db.select().from(sites)
+        .where(and(eq(sites.organizationId, organizationId), eq(sites.clientId, clientId)))
+        .orderBy(desc(sites.createdAt));
+    },
+    
+    getByStatus: async (organizationId: number, statuses: ('active' | 'completed' | 'archived')[]): Promise<Site[]> => {
+      const allSites = await db.select().from(sites)
+        .where(eq(sites.organizationId, organizationId))
+        .orderBy(desc(sites.createdAt));
+      
+      return allSites.filter(site => statuses.includes(site.status));
+    },
+    
+    getRecent: async (organizationId: number, limit: number): Promise<Site[]> => {
+      return db.select().from(sites)
+        .where(eq(sites.organizationId, organizationId))
+        .orderBy(desc(sites.createdAt))
+        .limit(limit);
+    },
+    
+    update: async (id: number, data: Partial<Omit<InsertSite, 'organizationId' | 'createdById'>>): Promise<Site | undefined> => {
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined) {
+          updates[key] = value;
+        }
+      });
+      
+      const [site] = await db.update(sites)
+        .set(updates)
+        .where(eq(sites.id, id))
+        .returning();
+      return site;
+    },
+    
+    updateScoped: async (id: number, organizationId: number, data: Partial<Omit<InsertSite, 'organizationId' | 'createdById'>>): Promise<Site | undefined> => {
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined) {
+          updates[key] = value;
+        }
+      });
+      
+      const [site] = await db.update(sites)
+        .set(updates)
+        .where(and(eq(sites.id, id), eq(sites.organizationId, organizationId)))
+        .returning();
+      return site;
+    },
+    
+    getStats: async (organizationId: number) => {
+      const allSites = await db.select().from(sites).where(eq(sites.organizationId, organizationId));
+      return {
+        total: allSites.length,
+        active: allSites.filter(s => s.status === 'active').length,
+        completed: allSites.filter(s => s.status === 'completed').length,
+        archived: allSites.filter(s => s.status === 'archived').length,
+      };
+    },
+  };
+  
+  siteContacts = {
+    create: async (data: InsertSiteContact): Promise<SiteContact> => {
+      const [contact] = await db.insert(siteContacts).values(data).returning();
+      return contact;
+    },
+    
+    getBySite: async (siteId: number): Promise<SiteContact[]> => {
+      return db.select().from(siteContacts)
+        .where(eq(siteContacts.siteId, siteId))
+        .orderBy(desc(siteContacts.createdAt));
+    },
+    
+    getBySiteScoped: async (siteId: number, organizationId: number): Promise<SiteContact[]> => {
+      return db.select().from(siteContacts)
+        .where(and(eq(siteContacts.siteId, siteId), eq(siteContacts.organizationId, organizationId)))
+        .orderBy(desc(siteContacts.createdAt));
+    },
+    
+    delete: async (id: number, organizationId: number): Promise<void> => {
+      await db.delete(siteContacts)
+        .where(and(eq(siteContacts.id, id), eq(siteContacts.organizationId, organizationId)));
+    },
+  };
+  
+  siteFiles = {
+    create: async (data: InsertSiteFile): Promise<SiteFile> => {
+      const [file] = await db.insert(siteFiles).values(data).returning();
+      return file;
+    },
+    
+    getBySite: async (siteId: number, fileType?: 'image' | 'drone' | 'contract' | 'document'): Promise<SiteFile[]> => {
+      if (fileType) {
+        return db.select().from(siteFiles)
+          .where(and(eq(siteFiles.siteId, siteId), eq(siteFiles.fileType, fileType)))
+          .orderBy(desc(siteFiles.uploadedAt));
+      }
+      return db.select().from(siteFiles)
+        .where(eq(siteFiles.siteId, siteId))
+        .orderBy(desc(siteFiles.uploadedAt));
+    },
+    
+    getBySiteScoped: async (siteId: number, organizationId: number, fileType?: 'image' | 'drone' | 'contract' | 'document'): Promise<SiteFile[]> => {
+      if (fileType) {
+        return db.select().from(siteFiles)
+          .where(and(
+            eq(siteFiles.siteId, siteId),
+            eq(siteFiles.organizationId, organizationId),
+            eq(siteFiles.fileType, fileType)
+          ))
+          .orderBy(desc(siteFiles.uploadedAt));
+      }
+      return db.select().from(siteFiles)
+        .where(and(eq(siteFiles.siteId, siteId), eq(siteFiles.organizationId, organizationId)))
+        .orderBy(desc(siteFiles.uploadedAt));
+    },
+    
+    delete: async (id: number, organizationId: number): Promise<void> => {
+      await db.delete(siteFiles)
+        .where(and(eq(siteFiles.id, id), eq(siteFiles.organizationId, organizationId)));
     },
   };
   

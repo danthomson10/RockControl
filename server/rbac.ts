@@ -1,6 +1,7 @@
 import type { Request, Response, NextFunction } from "express";
 import { storage } from "./storage";
 import type { User } from "@shared/schema";
+import { ROLE_CAPABILITIES, type UserRole, type Capability } from "@shared/rbac";
 
 // Extend Express Request to include user
 declare global {
@@ -10,61 +11,6 @@ declare global {
     }
   }
 }
-
-/**
- * Role capability matrix defining what each role can do
- */
-const ROLE_CAPABILITIES = {
-  OrgAdmin: {
-    canManageJobs: true,
-    canManageForms: true,
-    canManageIncidents: true,
-    canManageUsers: true,
-    canViewAll: true,
-  },
-  ProjectManager: {
-    canManageJobs: true,
-    canManageForms: true,
-    canManageIncidents: true,
-    canManageUsers: false,
-    canViewAll: true,
-  },
-  HSEManager: {
-    canManageJobs: true,
-    canManageForms: true,
-    canManageIncidents: true,
-    canManageUsers: false,
-    canViewAll: true,
-  },
-  SiteSupervisor: {
-    canManageJobs: false,
-    canManageForms: true,  // Can create forms for their sites
-    canManageIncidents: true,  // Can report incidents
-    canManageUsers: false,
-    canViewAll: true,  // Can view all jobs/forms in organization
-  },
-  FieldTech: {
-    canManageJobs: false,
-    canManageForms: true,  // Can submit safety forms
-    canManageIncidents: true,  // Can report incidents
-    canManageUsers: false,
-    canViewAll: false,  // Limited to assigned jobs
-  },
-  ClientViewer: {
-    canManageJobs: false,
-    canManageForms: false,
-    canManageIncidents: false,
-    canManageUsers: false,
-    canViewAll: true,  // Read-only access
-  },
-  Subcontractor: {
-    canManageJobs: false,
-    canManageForms: true,  // Can submit forms for their work
-    canManageIncidents: true,  // Can report incidents
-    canManageUsers: false,
-    canViewAll: false,  // Limited to assigned jobs
-  },
-} as const;
 
 /**
  * Middleware to load current user and attach to request

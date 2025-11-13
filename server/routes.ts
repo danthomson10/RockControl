@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { insertJobSchema, insertFormSchema, insertIncidentSchema, insertAccessRequestSchema } from "@shared/schema";
+import { insertClientSchema, insertSiteSchema, insertSiteContactSchema, insertSiteFileSchema, insertJobSchema, insertFormSchema, insertIncidentSchema, insertAccessRequestSchema } from "@shared/schema";
 import { 
   registerSchema, 
   loginSchema, 
@@ -719,6 +719,293 @@ export async function registerRoutes(app: Express): Promise<void> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // ====== Sites Routes ======
+  
+  app.get("/api/sites", isAuthenticated, async (req: any, res) => {
+    try {
+      const organizationId = await getOrgFromUser(req);
+      const status = req.query.status as 'active' | 'completed' | 'archived' | undefined;
+      const clientId = req.query.clientId ? parseInt(req.query.clientId as string) : undefined;
+      const search = req.query.search as string | undefined;
+      
+      const filters = { status, clientId, search };
+      const sites = await storage.sites.getByOrganization(organizationId, filters);
+      res.json(sites);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.get("/api/sites/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const organizationId = await getOrgFromUser(req);
+      const id = parseInt(req.params.id);
+      const site = await storage.sites.getByIdScoped(id, organizationId);
+      
+      if (!site) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+      
+      res.json(site);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.post("/api/sites", ...withAuth(isAuthenticated), requireCapability("canManageJobs"), async (req: any, res) => {
+    try {
+      const user = req.currentUser!;
+      const organizationId = user.organizationId;
+      const data = insertSiteSchema.parse(req.body);
+      
+      const site = await storage.sites.create({ 
+        ...data, 
+        organizationId,
+        createdById: user.id 
+      });
+      res.status(201).json(site);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.patch("/api/sites/:id", ...withAuth(isAuthenticated), requireCapability("canManageJobs"), async (req: any, res) => {
+    try {
+      const user = req.currentUser!;
+      const organizationId = user.organizationId;
+      const id = parseInt(req.params.id);
+      const data = insertSiteSchema.partial().parse(req.body);
+      
+      const site = await storage.sites.updateScoped(id, organizationId, data);
+      
+      if (!site) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+      
+      res.json(site);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // ====== Clients Routes ======
+  
+  app.get("/api/clients", isAuthenticated, async (req: any, res) => {
+    try {
+      const organizationId = await getOrgFromUser(req);
+      const includeInactive = req.query.includeInactive === 'true';
+      const clients = await storage.clients.getByOrganization(organizationId, includeInactive);
+      res.json(clients);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.get("/api/clients/:id", isAuthenticated, async (req: any, res) => {
+    try {
+      const organizationId = await getOrgFromUser(req);
+      const id = parseInt(req.params.id);
+      const client = await storage.clients.getByIdScoped(id, organizationId);
+      
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      res.json(client);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.post("/api/clients", ...withAuth(isAuthenticated), requireCapability("canManageJobs"), async (req: any, res) => {
+    try {
+      const user = req.currentUser!;
+      const organizationId = user.organizationId;
+      const data = insertClientSchema.parse(req.body);
+      
+      const client = await storage.clients.create({ 
+        ...data, 
+        organizationId 
+      });
+      res.status(201).json(client);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.patch("/api/clients/:id", ...withAuth(isAuthenticated), requireCapability("canManageJobs"), async (req: any, res) => {
+    try {
+      const user = req.currentUser!;
+      const organizationId = user.organizationId;
+      const id = parseInt(req.params.id);
+      const data = insertClientSchema.partial().parse(req.body);
+      
+      const client = await storage.clients.update(id, organizationId, data);
+      
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      res.json(client);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.delete("/api/clients/:id", ...withAuth(isAuthenticated), requireCapability("canManageJobs"), async (req: any, res) => {
+    try {
+      const user = req.currentUser!;
+      const organizationId = user.organizationId;
+      const id = parseInt(req.params.id);
+      
+      const client = await storage.clients.archive(id, organizationId);
+      
+      if (!client) {
+        return res.status(404).json({ error: "Client not found" });
+      }
+      
+      res.json(client);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // ====== Site Contacts Routes ======
+  
+  app.get("/api/sites/:siteId/contacts", isAuthenticated, async (req: any, res) => {
+    try {
+      const organizationId = await getOrgFromUser(req);
+      const siteId = parseInt(req.params.siteId);
+      
+      // Verify site belongs to user's organization first
+      const site = await storage.sites.getByIdScoped(siteId, organizationId);
+      if (!site) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+      
+      const contacts = await storage.siteContacts.getBySiteScoped(siteId, organizationId);
+      res.json(contacts);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.post("/api/sites/:siteId/contacts", ...withAuth(isAuthenticated), requireCapability("canManageJobs"), async (req: any, res) => {
+    try {
+      const user = req.currentUser!;
+      const organizationId = user.organizationId;
+      const siteId = parseInt(req.params.siteId);
+      
+      // Verify site belongs to user's organization first
+      const site = await storage.sites.getByIdScoped(siteId, organizationId);
+      if (!site) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+      
+      const data = insertSiteContactSchema.parse(req.body);
+      
+      const contact = await storage.siteContacts.create({ 
+        ...data, 
+        siteId,
+        organizationId 
+      });
+      res.status(201).json(contact);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.delete("/api/site-contacts/:id", ...withAuth(isAuthenticated), requireCapability("canManageJobs"), async (req: any, res) => {
+    try {
+      const user = req.currentUser!;
+      const organizationId = user.organizationId;
+      const id = parseInt(req.params.id);
+      
+      await storage.siteContacts.delete(id, organizationId);
+      res.status(204).send();
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // ====== Site Files Routes ======
+  
+  app.get("/api/sites/:siteId/files", isAuthenticated, async (req: any, res) => {
+    try {
+      const organizationId = await getOrgFromUser(req);
+      const siteId = parseInt(req.params.siteId);
+      const fileType = req.query.type as 'image' | 'drone' | 'contract' | 'document' | undefined;
+      
+      // Verify site belongs to user's organization first
+      const site = await storage.sites.getByIdScoped(siteId, organizationId);
+      if (!site) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+      
+      const files = await storage.siteFiles.getBySiteScoped(siteId, organizationId, fileType);
+      res.json(files);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.post("/api/sites/:siteId/files", ...withAuth(isAuthenticated), requireCapability("canManageJobs"), async (req: any, res) => {
+    try {
+      const user = req.currentUser!;
+      const organizationId = user.organizationId;
+      const siteId = parseInt(req.params.siteId);
+      
+      // Verify site belongs to user's organization first
+      const site = await storage.sites.getByIdScoped(siteId, organizationId);
+      if (!site) {
+        return res.status(404).json({ error: "Site not found" });
+      }
+      
+      const data = insertSiteFileSchema.parse(req.body);
+      
+      const file = await storage.siteFiles.create({ 
+        ...data, 
+        siteId,
+        organizationId,
+        uploadedById: user.id 
+      });
+      res.status(201).json(file);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.delete("/api/site-files/:id", ...withAuth(isAuthenticated), requireCapability("canManageJobs"), async (req: any, res) => {
+    try {
+      const user = req.currentUser!;
+      const organizationId = user.organizationId;
+      const id = parseInt(req.params.id);
+      
+      await storage.siteFiles.delete(id, organizationId);
+      res.status(204).send();
+    } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });

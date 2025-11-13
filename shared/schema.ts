@@ -15,6 +15,10 @@ export const userRoleEnum = pgEnum('user_role', [
 
 export const jobStatusEnum = pgEnum('job_status', ['draft', 'active', 'on-hold', 'completed', 'cancelled']);
 
+export const siteStatusEnum = pgEnum('site_status', ['active', 'completed', 'archived']);
+
+export const fileTypeEnum = pgEnum('file_type', ['image', 'drone', 'contract', 'document']);
+
 export const formTypeEnum = pgEnum('form_type', ['take-5', 'variation', 'crew-briefing', 'risk-control-plan']);
 
 export const formStatusEnum = pgEnum('form_status', ['draft', 'pending', 'approved', 'rejected', 'completed']);
@@ -87,13 +91,105 @@ export type UpsertUser = {
   profileImageUrl?: string | null;
 };
 
+// Clients table - reusable across sites and jobs
+export const clients = pgTable("clients", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  companyName: text("company_name").notNull(),
+  primaryContactName: text("primary_contact_name"),
+  primaryContactEmail: text("primary_contact_email"),
+  primaryContactPhone: text("primary_contact_phone"),
+  address: text("address"),
+  active: boolean("active").notNull().default(true),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertClientSchema = createInsertSchema(clients).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertClient = z.infer<typeof insertClientSchema>;
+export type Client = typeof clients.$inferSelect;
+
+// Sites table - lean core attributes only
+export const sites = pgTable("sites", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  clientId: integer("client_id").references(() => clients.id),
+  name: text("name").notNull(),
+  address: text("address").notNull(),
+  latitude: text("latitude"), // Separate lat/lng for better querying
+  longitude: text("longitude"),
+  status: siteStatusEnum("status").notNull().default('active'),
+  projectManagerId: integer("project_manager_id").references(() => users.id),
+  sharepointFolderUrl: text("sharepoint_folder_url"),
+  description: text("description"),
+  createdById: integer("created_by_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertSiteSchema = createInsertSchema(sites).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertSite = z.infer<typeof insertSiteSchema>;
+export type Site = typeof sites.$inferSelect;
+
+// Site contacts - multiple key contacts per site
+export const siteContacts = pgTable("site_contacts", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  siteId: integer("site_id").notNull().references(() => sites.id),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  role: text("role").notNull(), // e.g., "Site Manager", "Safety Officer", "Client Representative"
+  name: text("name").notNull(),
+  phone: text("phone"),
+  email: text("email"),
+  userId: integer("user_id").references(() => users.id), // Optional link to internal user
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+});
+
+export const insertSiteContactSchema = createInsertSchema(siteContacts).omit({
+  id: true,
+  createdAt: true,
+});
+export type InsertSiteContact = z.infer<typeof insertSiteContactSchema>;
+export type SiteContact = typeof siteContacts.$inferSelect;
+
+// Site files - auditable file storage with metadata
+export const siteFiles = pgTable("site_files", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  siteId: integer("site_id").notNull().references(() => sites.id),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  fileType: fileTypeEnum("file_type").notNull(),
+  fileName: text("file_name").notNull(),
+  storageKey: text("storage_key").notNull(), // Object storage key
+  fileUrl: text("file_url").notNull(), // Signed URL or public URL
+  fileSize: integer("file_size"), // Bytes
+  mimeType: text("mime_type"),
+  metadata: jsonb("metadata"), // Optional metadata (dimensions, duration, etc.)
+  uploadedById: integer("uploaded_by_id").notNull().references(() => users.id),
+  uploadedAt: timestamp("uploaded_at").notNull().defaultNow(),
+});
+
+export const insertSiteFileSchema = createInsertSchema(siteFiles).omit({
+  id: true,
+  uploadedAt: true,
+});
+export type InsertSiteFile = z.infer<typeof insertSiteFileSchema>;
+export type SiteFile = typeof siteFiles.$inferSelect;
+
 export const jobs = pgTable("jobs", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  siteId: integer("site_id").references(() => sites.id), // Link to site
   code: text("code").notNull().unique(),
   name: text("name").notNull(),
   description: text("description"),
-  siteLocation: text("site_location").notNull(),
+  siteLocation: text("site_location"), // Kept for backward compatibility, optional now
   status: jobStatusEnum("status").notNull().default('draft'),
   progress: integer("progress").notNull().default(0),
   startDate: timestamp("start_date"),
