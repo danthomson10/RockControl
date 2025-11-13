@@ -1,15 +1,34 @@
 import type { Express } from "express";
 import { storage } from "./storage";
 import { insertJobSchema, insertFormSchema, insertIncidentSchema, insertAccessRequestSchema } from "@shared/schema";
+import { 
+  registerSchema, 
+  loginSchema, 
+  forgotPasswordSchema, 
+  resetPasswordSchema,
+  resendVerificationSchema,
+  requestAccessSchema 
+} from "@shared/authSchemas";
 import { z } from "zod";
 import { setupAuth, isAuthenticated } from "./replitAuth";
 import { hashPassword, verifyPassword, createPasswordResetToken, resetPassword, verifyEmail, resendVerificationEmail, createEmailVerificationToken } from "./passwordAuth";
-import { generateAuthUrl, exchangeCodeForTokens, getUserInfo } from "./microsoftAuth";
+import { generateAuthUrl, exchangeCodeForTokens, getUserInfo, validateIdToken } from "./microsoftAuth";
 import cryptoRandomString from "crypto-random-string";
 import { sendAccessRequestNotification, sendAccessRequestApproved } from "./email";
 
 // Store OAuth state/nonce temporarily (in production, use Redis or session store)
-const oauthStateStore = new Map<string, { nonce: string; codeVerifier: string }>();
+const oauthStateStore = new Map<string, { nonce: string; codeVerifier: string; state: string; createdAt: number }>();
+
+// Clean up old OAuth state entries every 10 minutes
+setInterval(() => {
+  const now = Date.now();
+  const tenMinutes = 10 * 60 * 1000;
+  for (const [key, value] of oauthStateStore.entries()) {
+    if (now - value.createdAt > tenMinutes) {
+      oauthStateStore.delete(key);
+    }
+  }
+}, 10 * 60 * 1000);
 
 export async function registerRoutes(app: Express): Promise<void> {
   // Setup authentication
@@ -20,41 +39,39 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Email/Password Registration
   app.post('/api/auth/register', async (req, res) => {
     try {
-      const { email, password, name, organizationId } = req.body;
-      
-      // Validate input
-      if (!email || !password || !name) {
-        return res.status(400).json({ message: "Email, password, and name are required" });
-      }
+      const data = registerSchema.parse(req.body);
       
       // Check if user already exists
-      const existingUser = await storage.users.getByEmail(email);
+      const existingUser = await storage.users.getByEmail(data.email);
       if (existingUser) {
         return res.status(400).json({ message: "User with this email already exists" });
       }
       
       // Hash password
-      const passwordHash = await hashPassword(password);
+      const passwordHash = await hashPassword(data.password);
       
       // Create user
       const user = await storage.users.create({
-        email,
-        name,
+        email: data.email,
+        name: data.name,
         passwordHash,
-        organizationId: organizationId || 1, // Default to org 1 if not provided
-        role: 'FieldTech', // Default role
+        organizationId: data.organizationId || 1,
+        role: 'FieldTech',
         active: true,
         emailVerified: false,
       });
       
       // Send verification email
-      await createEmailVerificationToken(user.id, email, name);
+      await createEmailVerificationToken(user.id, data.email, data.name);
       
       res.status(201).json({ 
         message: "Registration successful. Please check your email to verify your account.",
         userId: user.id 
       });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
       console.error("Registration error:", error);
       res.status(500).json({ message: "Registration failed" });
     }
@@ -63,20 +80,16 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Email/Password Login
   app.post('/api/auth/login', async (req, res) => {
     try {
-      const { email, password } = req.body;
-      
-      if (!email || !password) {
-        return res.status(400).json({ message: "Email and password are required" });
-      }
+      const data = loginSchema.parse(req.body);
       
       // Find user
-      const user = await storage.users.getByEmail(email);
+      const user = await storage.users.getByEmail(data.email);
       if (!user || !user.passwordHash) {
         return res.status(401).json({ message: "Invalid email or password" });
       }
       
       // Verify password
-      const isValid = await verifyPassword(password, user.passwordHash);
+      const isValid = await verifyPassword(data.password, user.passwordHash);
       if (!isValid) {
         return res.status(401).json({ message: "Invalid email or password" });
       }
@@ -95,11 +108,14 @@ export async function registerRoutes(app: Express): Promise<void> {
         return res.status(403).json({ message: "Your account has been deactivated" });
       }
       
-      // Set session (using express-session)
+      // Set session
       (req as any).session.userId = user.id;
       
       res.json({ user });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
       console.error("Login error:", error);
       res.status(500).json({ message: "Login failed" });
     }
@@ -118,17 +134,16 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Forgot Password - Request Reset
   app.post('/api/auth/forgot-password', async (req, res) => {
     try {
-      const { email } = req.body;
+      const data = forgotPasswordSchema.parse(req.body);
       
-      if (!email) {
-        return res.status(400).json({ message: "Email is required" });
-      }
-      
-      await createPasswordResetToken(email);
+      await createPasswordResetToken(data.email);
       
       // Always return success to prevent email enumeration
       res.json({ message: "If an account with this email exists, a password reset link has been sent." });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid email address" });
+      }
       console.error("Forgot password error:", error);
       res.json({ message: "If an account with this email exists, a password reset link has been sent." });
     }
@@ -137,20 +152,15 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Reset Password - Submit New Password
   app.post('/api/auth/reset-password', async (req, res) => {
     try {
-      const { token, password } = req.body;
+      const data = resetPasswordSchema.parse(req.body);
       
-      if (!token || !password) {
-        return res.status(400).json({ message: "Token and new password are required" });
-      }
-      
-      if (password.length < 8) {
-        return res.status(400).json({ message: "Password must be at least 8 characters long" });
-      }
-      
-      await resetPassword(token, password);
+      await resetPassword(data.token, data.password);
       
       res.json({ message: "Password reset successful. You can now log in with your new password." });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
       console.error("Reset password error:", error);
       res.status(400).json({ message: error.message || "Password reset failed" });
     }
@@ -177,16 +187,15 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Resend Verification Email
   app.post('/api/auth/resend-verification', async (req, res) => {
     try {
-      const { email } = req.body;
+      const data = resendVerificationSchema.parse(req.body);
       
-      if (!email) {
-        return res.status(400).json({ message: "Email is required" });
-      }
-      
-      await resendVerificationEmail(email);
+      await resendVerificationEmail(data.email);
       
       res.json({ message: "Verification email sent" });
     } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid email address" });
+      }
       console.error("Resend verification error:", error);
       res.status(400).json({ message: error.message || "Failed to send verification email" });
     }
@@ -200,11 +209,13 @@ export async function registerRoutes(app: Express): Promise<void> {
       
       const { authUrl, codeVerifier } = generateAuthUrl(state, nonce);
       
-      // Store state and code verifier for callback
-      oauthStateStore.set(state, { nonce, codeVerifier });
-      
-      // Clean up old state entries (older than 10 minutes)
-      setTimeout(() => oauthStateStore.delete(state), 10 * 60 * 1000);
+      // Store state, nonce, and code verifier for callback validation
+      oauthStateStore.set(state, { 
+        nonce, 
+        codeVerifier, 
+        state,
+        createdAt: Date.now() 
+      });
       
       res.redirect(authUrl);
     } catch (error: any) {
@@ -213,38 +224,67 @@ export async function registerRoutes(app: Express): Promise<void> {
     }
   });
   
-  // Microsoft SSO - Callback
-  app.get('/api/auth/microsoft/callback', async (req, res) => {
+  // Microsoft SSO - Callback (updated path per user's Azure config)
+  app.get('/api/auth/callback/azure-ad', async (req, res) => {
+    const { code, state } = req.query;
+    
     try {
-      const { code, state } = req.query;
-      
+      // Validate callback parameters
       if (!code || !state || typeof code !== 'string' || typeof state !== 'string') {
+        console.error("Invalid callback parameters");
         return res.status(400).send("Invalid callback parameters");
       }
       
+      // Validate and retrieve stored state
       const storedData = oauthStateStore.get(state);
       if (!storedData) {
-        return res.status(400).send("Invalid or expired state");
+        console.error("Invalid or expired state parameter");
+        return res.status(400).send("Invalid or expired state parameter");
       }
       
-      // Exchange code for tokens
+      // Double-check state matches (CSRF protection)
+      if (storedData.state !== state) {
+        console.error("State parameter mismatch");
+        oauthStateStore.delete(state);
+        return res.status(400).send("State parameter mismatch");
+      }
+      
+      // Exchange authorization code for tokens
       const tokenSet = await exchangeCodeForTokens(code, storedData.codeVerifier);
       
+      // CRITICAL: Verify ID token exists
+      if (!tokenSet.id_token) {
+        console.error("No ID token in token response");
+        oauthStateStore.delete(state);
+        return res.status(400).send("No ID token received from Microsoft");
+      }
+      
+      // CRITICAL: Cryptographically verify ID token
+      // This validates signature, issuer, audience, expiration, and nonce
+      let validatedPayload;
+      try {
+        validatedPayload = await validateIdToken(tokenSet.id_token, storedData.nonce);
+      } catch (err: any) {
+        console.error("ID token validation failed:", err.message);
+        oauthStateStore.delete(state);
+        return res.status(400).send(`ID token validation failed: ${err.message}`);
+      }
+      
       // Get user info from Microsoft Graph
-      const microsoftUser = await getUserInfo(tokenSet.access_token!);
+      const microsoftUser = await getUserInfo(tokenSet.access_token);
       
       // Find or create user
-      let user = await storage.users.getByEmail(microsoftUser.mail || microsoftUser.userPrincipalName);
+      const email = microsoftUser.mail || microsoftUser.userPrincipalName;
+      let user = await storage.users.getByEmail(email);
       
       if (!user) {
-        // Create new user
         user = await storage.users.create({
-          email: microsoftUser.mail || microsoftUser.userPrincipalName,
-          name: microsoftUser.displayName || microsoftUser.userPrincipalName,
+          email,
+          name: microsoftUser.displayName || email,
           firstName: microsoftUser.givenName,
           lastName: microsoftUser.surname,
-          emailVerified: true, // Microsoft emails are pre-verified
-          organizationId: 1, // Default org
+          emailVerified: true,
+          organizationId: 1,
           role: 'FieldTech',
           active: true,
         });
@@ -264,21 +304,26 @@ export async function registerRoutes(app: Express): Promise<void> {
           userId: user.id,
           provider: 'microsoft',
           providerUserId: microsoftUser.id,
-          accessToken: tokenSet.access_token!,
+          accessToken: tokenSet.access_token,
           refreshToken: tokenSet.refresh_token,
           expiresAt: tokenSet.expires_at ? new Date(tokenSet.expires_at * 1000) : undefined,
         });
       }
       
-      // Set session
+      // Set session only after successful validation
       (req as any).session.userId = user.id;
       
-      // Clean up state
+      // Clean up state after success
       oauthStateStore.delete(state);
       
       // Redirect to app
       res.redirect('/');
     } catch (error: any) {
+      // Clean up state on any error
+      if (state && typeof state === 'string') {
+        oauthStateStore.delete(state);
+      }
+      
       console.error("Microsoft OAuth callback error:", error);
       res.status(500).send("Authentication failed");
     }
@@ -287,32 +332,26 @@ export async function registerRoutes(app: Express): Promise<void> {
   // Access Request - Submit
   app.post('/api/auth/request-access', async (req, res) => {
     try {
-      const { email, name, organizationId } = req.body;
-      
-      if (!email || !name || !organizationId) {
-        return res.status(400).json({ message: "Email, name, and organization are required" });
-      }
+      const data = requestAccessSchema.parse(req.body);
       
       // Check if user already exists
-      const existingUser = await storage.users.getByEmail(email);
+      const existingUser = await storage.users.getByEmail(data.email);
       if (existingUser) {
         return res.status(400).json({ message: "A user with this email already exists" });
       }
       
       // Create access request
       const request = await storage.accessRequests.create({
-        email,
-        name,
-        organizationId: parseInt(organizationId),
+        email: data.email,
+        name: data.name,
+        organizationId: data.organizationId,
         status: 'pending',
       });
       
       // Get organization to notify admins
-      const org = await storage.organizations.getById(parseInt(organizationId));
+      const org = await storage.organizations.getById(data.organizationId);
       if (org) {
-        // TODO: Get admin emails and send notification
-        // For now, we'll skip the notification
-        console.log(`Access request created for ${email} to ${org.name}`);
+        console.log(`Access request created for ${data.email} to ${org.name}`);
       }
       
       res.status(201).json({ 

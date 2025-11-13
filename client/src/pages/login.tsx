@@ -5,8 +5,7 @@ import { Label } from "@/components/ui/label";
 import { Card, CardContent, CardDescription, CardFooter, CardHeader, CardTitle } from "@/components/ui/card";
 import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { Shield, Mail, Lock } from "lucide-react";
-import { SiMicrosoft } from "react-icons/si";
+import { Shield, Mail, Lock, Building2 } from "lucide-react";
 import { useLocation } from "wouter";
 import { apiRequest } from "@/lib/queryClient";
 
@@ -82,7 +81,7 @@ export default function Login() {
             className="w-full"
             data-testid="button-microsoft-login"
           >
-            <SiMicrosoft className="mr-2 h-4 w-4" />
+            <Building2 className="mr-2 h-4 w-4" />
             Sign in with Microsoft
           </Button>
 
