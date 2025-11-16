@@ -1119,6 +1119,124 @@ export async function registerRoutes(app: Express) {
     }
   });
   
+  // OpenAI Realtime API endpoints for conversational voice forms
+  app.post("/api/realtime/session", ...withAuth(isAuthenticated), async (req: any, res) => {
+    try {
+      const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
+      if (!OPENAI_API_KEY) {
+        return res.status(500).json({ error: "OpenAI API key not configured" });
+      }
+
+      const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
+        method: "POST",
+        headers: {
+          "Authorization": `Bearer ${OPENAI_API_KEY}`,
+          "Content-Type": "application/json",
+        },
+        body: JSON.stringify({
+          model: "gpt-4o-mini-realtime-preview-2024-12-17",
+          voice: "cedar",
+        }),
+      });
+
+      if (!response.ok) {
+        const error = await response.text();
+        console.error("OpenAI session creation failed:", error);
+        return res.status(response.status).json({ error: "Failed to create session" });
+      }
+
+      const data = await response.json();
+      res.json(data);
+    } catch (error: any) {
+      console.error("Realtime session error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // Get form schema for AI instructions
+  app.get("/api/realtime/form-schema/:formType", ...withAuth(isAuthenticated), async (req: any, res) => {
+    try {
+      const { formType } = req.params;
+      
+      // Map form types to their schemas
+      const formSchemas: Record<string, any> = {
+        "incident-report": {
+          title: "Incident Report",
+          description: "Report a workplace safety incident",
+          requiresSignature: true,
+          fields: [
+            { name: "incidentDate", type: "date", label: "Date of Incident", required: true },
+            { name: "incidentTime", type: "time", label: "Time of Incident", required: true },
+            { name: "location", type: "text", label: "Location", required: true },
+            { name: "description", type: "textarea", label: "Description of Incident", required: true },
+            { name: "severity", type: "radio", label: "Severity", options: ["low", "medium", "high", "critical"], required: true },
+            { name: "witnesses", type: "textarea", label: "Witnesses", required: false },
+            { name: "immediateAction", type: "textarea", label: "Immediate Action Taken", required: false },
+          ]
+        },
+        "take-5": {
+          title: "Take 5 Safety Check",
+          description: "Pre-work safety assessment",
+          requiresSignature: true,
+          fields: [
+            { name: "task", type: "text", label: "Task Description", required: true },
+            { name: "location", type: "text", label: "Location", required: true },
+            { name: "hazards", type: "textarea", label: "Identified Hazards", required: true },
+            { name: "controls", type: "textarea", label: "Control Measures", required: true },
+            { name: "ppeRequired", type: "checkbox", label: "PPE Required", options: ["Hard Hat", "Safety Glasses", "Gloves", "High Vis", "Steel Toe Boots"], required: false },
+          ]
+        },
+        "variation": {
+          title: "Variation Order",
+          description: "Request a change to project scope",
+          requiresSignature: true,
+          fields: [
+            { name: "variationNumber", type: "text", label: "Variation Number", required: true },
+            { name: "description", type: "textarea", label: "Description", required: true },
+            { name: "reason", type: "textarea", label: "Reason for Variation", required: true },
+            { name: "impact", type: "textarea", label: "Impact on Schedule/Budget", required: false },
+            { name: "estimatedCost", type: "number", label: "Estimated Cost", required: false },
+          ]
+        },
+        "crew-briefing": {
+          title: "Crew Briefing",
+          description: "Daily crew safety briefing",
+          requiresSignature: true,
+          fields: [
+            { name: "date", type: "date", label: "Briefing Date", required: true },
+            { name: "attendees", type: "textarea", label: "Attendees", required: true },
+            { name: "workPlan", type: "textarea", label: "Work Plan for Today", required: true },
+            { name: "safetyTopics", type: "textarea", label: "Safety Topics Discussed", required: true },
+            { name: "equipment", type: "textarea", label: "Equipment Required", required: false },
+          ]
+        },
+        "risk-control-plan": {
+          title: "Risk Control Plan",
+          description: "Comprehensive risk assessment and control plan",
+          requiresSignature: true,
+          fields: [
+            { name: "activity", type: "text", label: "Activity/Task", required: true },
+            { name: "hazards", type: "textarea", label: "Identified Hazards", required: true },
+            { name: "riskRating", type: "radio", label: "Risk Rating", options: ["low", "medium", "high", "critical"], required: true },
+            { name: "controls", type: "textarea", label: "Control Measures", required: true },
+            { name: "residualRisk", type: "radio", label: "Residual Risk", options: ["low", "medium", "high"], required: true },
+            { name: "responsiblePerson", type: "text", label: "Responsible Person", required: true },
+          ]
+        },
+      };
+
+      const schema = formSchemas[formType];
+      if (!schema) {
+        return res.status(404).json({ error: "Form type not found" });
+      }
+
+      res.json(schema);
+    } catch (error: any) {
+      console.error("Form schema error:", error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
   // Setup voice routes
   const { setupVoiceRoutes } = await import('./voice');
   setupVoiceRoutes(app, storage);
