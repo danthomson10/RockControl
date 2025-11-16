@@ -140,23 +140,33 @@ async function initializeElevenLabsConversation(
       try {
         const message = JSON.parse(data.toString());
         
-        // Log all message types for debugging
-        if (message.type !== 'audio' && message.type !== 'ping') {
-          console.log('📨 ElevenLabs message:', message.type, message);
+        // Log all message types for debugging (including audio for now)
+        if (message.type !== 'ping') {
+          console.log('📨 ElevenLabs message:', message.type, 
+            message.type === 'audio' ? '(audio chunk received)' : JSON.stringify(message, null, 2));
         }
         
         // Handle different message types from ElevenLabs
         switch (message.type) {
           case 'audio':
             // Forward audio from ElevenLabs back to Twilio
-            if (message.audio_base64 && session.twilioWs?.readyState === WebSocket.OPEN) {
+            // ElevenLabs uses audio_base_64 (with underscores), not audio_base64
+            const audioData = message.audio_event?.audio_base_64 || 
+                            message.audio_event?.audio_base64 || 
+                            message.audio_base64 || 
+                            message.audio_base_64;
+            
+            if (audioData && session.twilioWs?.readyState === WebSocket.OPEN) {
+              console.log('🔊 Forwarding audio chunk to Twilio');
               session.twilioWs.send(JSON.stringify({
                 event: 'media',
                 streamSid: session.streamSid,
                 media: {
-                  payload: message.audio_base64,
+                  payload: audioData,
                 },
               }));
+            } else {
+              console.log('⚠️ Audio message received but no audio data found:', Object.keys(message));
             }
             break;
             
@@ -194,8 +204,12 @@ async function initializeElevenLabsConversation(
             break;
             
           case 'ping':
-            // Respond to keep-alive
-            session.elevenLabsWs?.send(JSON.stringify({ type: 'pong' }));
+            // Respond to keep-alive with matching event_id
+            const pingEventId = message.ping_event?.event_id;
+            session.elevenLabsWs?.send(JSON.stringify({ 
+              type: 'pong',
+              event_id: pingEventId
+            }));
             break;
             
           default:
