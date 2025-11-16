@@ -176,77 +176,46 @@ export function setupVoiceRoutes(app: Router, storage: DatabaseStorage) {
     }
   });
 
-  // Webhook for incoming calls
+  // Twilio Webhook: Incoming calls - Stream directly to ElevenLabs
   app.post('/api/voice/incoming-call', (req, res) => {
-    const twiml = new VoiceResponse();
-    
-    twiml.say(
-      { voice: 'alice' },
-      'Welcome to Rock Control. Please choose a form to complete. Say incident report for safety incidents, or take five for pre-work safety checks.'
-    );
-    
-    const gather = twiml.gather({
-      input: ['speech'],
-      action: '/api/voice/handle-form-selection',
-      method: 'POST',
-      speechTimeout: 3,
-      language: 'en-US',
-    });
-    
-    gather.say('What form would you like to complete?');
-    
-    res.type('text/xml');
-    res.send(twiml.toString());
-  });
-
-  // Handle form selection
-  app.post('/api/voice/handle-form-selection', async (req, res) => {
-    const twiml = new VoiceResponse();
-    const speechResult = req.body.SpeechResult?.toLowerCase() || '';
-    
-    let formType = '';
-    if (speechResult.includes('incident')) {
-      formType = 'incident-report';
-    } else if (speechResult.includes('take') && speechResult.includes('five')) {
-      formType = 'take-5';
-    } else if (speechResult.includes('variation')) {
-      formType = 'variation';
-    } else if (speechResult.includes('crew')) {
-      formType = 'crew-briefing';
-    }
-    
-    if (!formType) {
-      twiml.say("I didn't understand that. Please try again.");
-      twiml.redirect('/api/voice/incoming-call');
-    } else {
-      // Get the form template
-      try {
-        const templates = await storage.formTemplates.getByOrganization(1, false);
-        const template = templates.find((t: any) => t.type === formType);
-        
-        if (!template) {
-          twiml.say(`Sorry, that form is not available. Please try another option.`);
-          twiml.redirect('/api/voice/incoming-call');
-        } else {
-          // Connect to ElevenLabs WebSocket for conversational form filling
-          const connect = twiml.connect();
-          const stream = connect.stream({
-            url: `wss://${req.get('host')}/api/voice/media-stream?formType=${formType}&templateId=${template.id}`,
-          });
-          
-          stream.parameter({ name: 'callerPhone', value: req.body.From });
-          stream.parameter({ name: 'formType', value: formType });
-          stream.parameter({ name: 'templateId', value: template.id.toString() });
-        }
-      } catch (error) {
-        console.error('Error fetching form template:', error);
-        twiml.say('Sorry, there was an error. Please try again later.');
+    try {
+      const twiml = new VoiceResponse();
+      
+      // Get ElevenLabs agent ID from environment
+      const agentId = process.env.ELEVENLABS_AGENT_ID || 'agent_8401k9xb1dypexrtqt8n6g8zmtga';
+      const apiKey = process.env.ELEVENLABS_API_KEY;
+      
+      if (!apiKey) {
+        console.error('❌ ELEVENLABS_API_KEY not configured');
+        twiml.say('Sorry, the voice assistant is not configured. Please contact support.');
         twiml.hangup();
+        res.type('text/xml');
+        return res.send(twiml.toString());
       }
+      
+      console.log('📞 Incoming call from:', req.body.From);
+      console.log('🎙️ Connecting to ElevenLabs agent:', agentId);
+      
+      // Connect and stream audio to ElevenLabs Conversational AI
+      const connect = twiml.connect();
+      const stream = connect.stream({
+        url: `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${agentId}`,
+      });
+      
+      // Pass API key and caller info to ElevenLabs
+      stream.parameter({ name: 'authorization', value: apiKey });
+      stream.parameter({ name: 'caller_phone', value: req.body.From || 'unknown' });
+      
+      res.type('text/xml');
+      res.send(twiml.toString());
+    } catch (error: any) {
+      console.error('Error in incoming-call webhook:', error);
+      const twiml = new VoiceResponse();
+      twiml.say('Sorry, there was an error connecting your call. Please try again later.');
+      twiml.hangup();
+      res.type('text/xml');
+      res.send(twiml.toString());
     }
-    
-    res.type('text/xml');
-    res.send(twiml.toString());
   });
 
   // Save voice-completed form data
