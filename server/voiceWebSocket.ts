@@ -64,9 +64,9 @@ export function setupVoiceWebSocket(server: Server, storage: DatabaseStorage) {
           case 'media':
             if (session?.elevenLabsWs && session.elevenLabsWs.readyState === WebSocket.OPEN) {
               // Forward audio from Twilio to ElevenLabs
-              const audioPayload = msg.media.payload;
+              // Twilio sends base64-encoded μ-law audio in msg.media.payload
               session.elevenLabsWs.send(JSON.stringify({
-                user_audio_chunk: audioPayload,
+                user_audio_chunk: msg.media.payload,
               }));
             }
             break;
