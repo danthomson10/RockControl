@@ -155,35 +155,23 @@ export function setupVoiceRoutes(app: Router, storage: DatabaseStorage) {
     }
   });
 
-  // Twilio Webhook: Incoming calls - Stream directly to ElevenLabs
+  // Twilio Webhook: Incoming calls - Stream to WebSocket proxy
   app.post('/api/voice/incoming-call', (req, res) => {
     try {
       const twiml = new VoiceResponse();
       
-      // Get ElevenLabs agent ID from environment
-      const agentId = process.env.ELEVENLABS_AGENT_ID || 'agent_8401k9xb1dypexrtqt8n6g8zmtga';
-      const apiKey = process.env.ELEVENLABS_API_KEY;
-      
-      if (!apiKey) {
-        console.error('❌ ELEVENLABS_API_KEY not configured');
-        twiml.say('Sorry, the voice assistant is not configured. Please contact support.');
-        twiml.hangup();
-        res.type('text/xml');
-        return res.send(twiml.toString());
-      }
-      
       console.log('📞 Incoming call from:', req.body.From);
-      console.log('🎙️ Connecting to ElevenLabs agent:', agentId);
+      console.log('🎙️ Streaming to ElevenLabs proxy');
       
-      // Connect and stream audio to ElevenLabs Conversational AI
+      // Connect and stream audio to our WebSocket proxy
+      // The proxy will handle ElevenLabs authentication securely
       const connect = twiml.connect();
       const stream = connect.stream({
-        url: `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${agentId}`,
+        url: `wss://${req.get('host')}/api/voice/media-stream`,
       });
       
-      // Pass API key and caller info to ElevenLabs
-      stream.parameter({ name: 'authorization', value: apiKey });
-      stream.parameter({ name: 'caller_phone', value: req.body.From || 'unknown' });
+      // Pass caller info (but NOT API keys - those stay server-side)
+      stream.parameter({ name: 'callerPhone', value: req.body.From || 'unknown' });
       
       res.type('text/xml');
       res.send(twiml.toString());

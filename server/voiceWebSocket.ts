@@ -8,6 +8,7 @@ interface CallSession {
   callerPhone: string;
   formType: string;
   templateId: number;
+  twilioWs?: WebSocket;
   elevenLabsWs?: WebSocket;
   conversationState: {
     currentQuestionIndex: number;
@@ -42,8 +43,9 @@ export function setupVoiceWebSocket(server: Server, storage: DatabaseStorage) {
               streamSid: msg.streamSid,
               callSid: msg.start.callSid,
               callerPhone: msg.start.customParameters?.callerPhone || 'unknown',
-              formType: msg.start.customParameters?.formType || formType,
-              templateId: parseInt(msg.start.customParameters?.templateId || String(templateId)),
+              formType: msg.start.customParameters?.formType || '',
+              templateId: parseInt(msg.start.customParameters?.templateId || '0'),
+              twilioWs: ws,
               conversationState: {
                 currentQuestionIndex: 0,
                 responses: {},
@@ -51,7 +53,7 @@ export function setupVoiceWebSocket(server: Server, storage: DatabaseStorage) {
             };
             
             activeSessions.set(msg.streamSid, session);
-            console.log(`📞 Call started: ${session.callSid} for ${session.formType}`);
+            console.log(`📞 Call started: ${session.callSid}`);
             
             // Initialize ElevenLabs conversation
             await initializeElevenLabsConversation(session, storage);
@@ -59,11 +61,10 @@ export function setupVoiceWebSocket(server: Server, storage: DatabaseStorage) {
 
           case 'media':
             if (session?.elevenLabsWs && session.elevenLabsWs.readyState === WebSocket.OPEN) {
-              // Forward audio to ElevenLabs
+              // Forward audio from Twilio to ElevenLabs
               const audioPayload = msg.media.payload;
               session.elevenLabsWs.send(JSON.stringify({
-                type: 'audio',
-                audio_base64: audioPayload,
+                user_audio_chunk: audioPayload,
               }));
             }
             break;
@@ -100,40 +101,82 @@ async function initializeElevenLabsConversation(
   storage: DatabaseStorage
 ) {
   const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+  const ELEVENLABS_AGENT_ID = process.env.ELEVENLABS_AGENT_ID || 'agent_8401k9xb1dypexrtqt8n6g8zmtga';
   
   if (!ELEVENLABS_API_KEY) {
     console.error('❌ ElevenLabs API key not configured');
     return;
   }
 
-  // Get form template
-  const template = await storage.formTemplates.getByIdScoped(session.templateId, 1);
+  console.log(`🤖 Connecting to ElevenLabs agent: ${ELEVENLABS_AGENT_ID}`);
   
-  if (!template) {
-    console.error(`❌ Template ${session.templateId} not found`);
-    return;
-  }
+  try {
+    // Connect to ElevenLabs Conversational AI WebSocket
+    const wsUrl = `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${ELEVENLABS_AGENT_ID}`;
+    
+    session.elevenLabsWs = new WebSocket(wsUrl, {
+      headers: {
+        'xi-api-key': ELEVENLABS_API_KEY
+      }
+    });
 
-  const questions = (template.schema as any).questions || [];
-  
-  // Build system prompt for ElevenLabs agent
-  const systemPrompt = buildFormPrompt(template.name, questions);
-  
-  console.log(`🤖 Initializing ElevenLabs conversation for ${template.name}`);
-  console.log(`   Questions: ${questions.length}`);
-  
-  // Note: This is a simplified implementation
-  // In production, you'd connect to ElevenLabs Conversational AI WebSocket
-  // For now, we're setting up the structure
-  
-  // The actual ElevenLabs WebSocket connection would be:
-  // const wsUrl = `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${AGENT_ID}`;
-  // session.elevenLabsWs = new WebSocket(wsUrl, {
-  //   headers: { 'xi-api-key': ELEVENLABS_API_KEY }
-  // });
-  
-  // For this implementation, we'll use a simpler approach with Twilio's gather
-  console.log('✅ Voice conversation initialized');
+    session.elevenLabsWs.on('open', () => {
+      console.log('✅ ElevenLabs connection established');
+      
+      // Send initial conversation context
+      session.elevenLabsWs?.send(JSON.stringify({
+        type: 'conversation_initiation_client_data',
+        conversation_initiation_client_data: {
+          caller_phone: session.callerPhone,
+          form_type: session.formType,
+        }
+      }));
+    });
+
+    session.elevenLabsWs.on('message', (data: Buffer) => {
+      try {
+        const message = JSON.parse(data.toString());
+        
+        // Handle different message types from ElevenLabs
+        switch (message.type) {
+          case 'audio':
+            // Forward audio from ElevenLabs back to Twilio
+            if (message.audio_base64 && session.twilioWs?.readyState === WebSocket.OPEN) {
+              session.twilioWs.send(JSON.stringify({
+                event: 'media',
+                streamSid: session.streamSid,
+                media: {
+                  payload: message.audio_base64,
+                },
+              }));
+            }
+            break;
+            
+          case 'interruption':
+            console.log('🔇 User interrupted');
+            break;
+            
+          case 'ping':
+            // Respond to keep-alive
+            session.elevenLabsWs?.send(JSON.stringify({ type: 'pong' }));
+            break;
+        }
+      } catch (error) {
+        console.error('Error parsing ElevenLabs message:', error);
+      }
+    });
+
+    session.elevenLabsWs.on('error', (error) => {
+      console.error('❌ ElevenLabs WebSocket error:', error);
+    });
+
+    session.elevenLabsWs.on('close', () => {
+      console.log('🔌 ElevenLabs connection closed');
+    });
+    
+  } catch (error) {
+    console.error('❌ Failed to connect to ElevenLabs:', error);
+  }
 }
 
 function buildFormPrompt(formName: string, questions: any[]): string {
