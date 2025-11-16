@@ -93,6 +93,31 @@ export type UpsertUser = {
   profileImageUrl?: string | null;
 };
 
+// User phone numbers table - supports multiple verified numbers per user
+export const userPhoneNumbers = pgTable("user_phone_numbers", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  userId: integer("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
+  phoneNumber: text("phone_number").notNull(), // E.164 format: +64211782272
+  isPrimary: boolean("is_primary").notNull().default(false),
+  verified: boolean("verified").notNull().default(false),
+  verifiedAt: timestamp("verified_at"),
+  allowVoiceAccess: boolean("allow_voice_access").notNull().default(true),
+  allowedFormTypes: text("allowed_form_types").array(), // null = all forms allowed
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+}, (table) => [
+  index("idx_phone_number").on(table.phoneNumber),
+  index("idx_user_phone").on(table.userId, table.phoneNumber),
+]);
+
+export const insertUserPhoneNumberSchema = createInsertSchema(userPhoneNumbers).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertUserPhoneNumber = z.infer<typeof insertUserPhoneNumberSchema>;
+export type UserPhoneNumber = typeof userPhoneNumbers.$inferSelect;
+
 // Clients table - reusable across sites and jobs
 export const clients = pgTable("clients", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),

@@ -55,7 +55,18 @@ export function setupVoiceWebSocket(server: Server, storage: DatabaseStorage) {
             };
             
             activeSessions.set(msg.streamSid, session);
-            console.log(`📞 Call started: ${session.callSid}`);
+            console.log(`📞 Call started: ${session.callSid} from ${session.callerPhone}`);
+            
+            // Authorize caller by phone number
+            const phoneAuth = await storage.userPhoneNumbers.getByPhoneNumber(session.callerPhone);
+            if (!phoneAuth || !phoneAuth.verified || !phoneAuth.allowVoiceAccess) {
+              console.log(`❌ Unauthorized phone number: ${session.callerPhone}`);
+              ws.close();
+              activeSessions.delete(msg.streamSid);
+              return;
+            }
+            
+            console.log(`✅ Authorized caller: ${phoneAuth.user.name} (${phoneAuth.user.email})`);
             
             // Initialize ElevenLabs conversation
             await initializeElevenLabsConversation(session, storage);
