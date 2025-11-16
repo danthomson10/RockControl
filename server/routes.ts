@@ -420,21 +420,138 @@ export async function registerRoutes(app: Express) {
   };
 
   
+  // ====== Dashboard Routes ======
+  
+  // Basic stats for all authenticated users
   app.get("/api/dashboard/stats", isAuthenticated, async (req: any, res) => {
     try {
       const organizationId = await getOrgFromUser(req);
       
-      const [jobStats, formStats, incidentStats] = await Promise.all([
+      const [jobStats, formStats, incidentStats, siteStats] = await Promise.all([
         storage.jobs.getStats(organizationId),
         storage.forms.getStats(organizationId),
         storage.incidents.getStats(organizationId),
+        storage.sites.getStats(organizationId),
       ]);
       
       res.json({
+        jobs: jobStats,
+        forms: formStats,
+        incidents: incidentStats,
+        sites: siteStats,
         activeJobs: jobStats.active,
         formsPending: formStats.pending,
         openIncidents: incidentStats.open,
-        complianceRate: 98, // todo: Calculate actual compliance rate
+        complianceRate: formStats.total > 0 
+          ? Math.round((formStats.completed / formStats.total) * 100)
+          : 100,
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Comprehensive overview for admin users with canViewAll capability
+  app.get("/api/dashboard/overview", isAuthenticated, loadCurrentUser, requireCapability("canViewAll"), async (req: any, res) => {
+    try {
+      const organizationId = req.currentUser!.organizationId;
+      
+      const [
+        jobs,
+        recentForms,
+        recentIncidents,
+        sites,
+        jobStats,
+        formStats,
+        incidentStats,
+        siteStats
+      ] = await Promise.all([
+        storage.jobs.getByOrganization(organizationId),
+        storage.forms.getByOrganization(organizationId, 10),
+        storage.incidents.getByOrganization(organizationId, 10),
+        storage.sites.getByOrganization(organizationId),
+        storage.jobs.getStats(organizationId),
+        storage.forms.getStats(organizationId),
+        storage.incidents.getStats(organizationId),
+        storage.sites.getStats(organizationId),
+      ]);
+      
+      // Calculate project progress metrics - guard against missing progress fields
+      const totalProgress = jobs.reduce((sum, job) => sum + (job.progress || 0), 0);
+      const averageProgress = jobs.length > 0 ? Math.round(totalProgress / jobs.length) : 0;
+      
+      // Calculate completion rate
+      const completionRate = jobStats.total > 0
+        ? Math.round((jobStats.completed / jobStats.total) * 100)
+        : 0;
+      
+      // Calculate compliance rate (forms completed vs total)
+      const complianceRate = formStats.total > 0
+        ? Math.round((formStats.completed / formStats.total) * 100)
+        : 100;
+      
+      res.json({
+        stats: {
+          jobs: jobStats,
+          forms: formStats,
+          incidents: incidentStats,
+          sites: siteStats,
+        },
+        metrics: {
+          averageProgress,
+          completionRate,
+          complianceRate,
+        },
+        recentActivity: {
+          forms: recentForms,
+          incidents: recentIncidents,
+        },
+        activeJobs: jobs.filter(j => j.status === 'active'),
+      });
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Personal activity for frontline users (FieldTech, Subcontractor)
+  app.get("/api/dashboard/my-activity", isAuthenticated, loadCurrentUser, async (req: any, res) => {
+    try {
+      const user = req.currentUser;
+      if (!user) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      
+      const organizationId = user.organizationId;
+      
+      // Get user's assigned jobs via job members - ONLY fetch assigned job IDs
+      const userJobMembers = await storage.jobMembers.getByUser(user.id);
+      const userJobIds = userJobMembers.map(member => member.jobId);
+      
+      // Fetch ONLY assigned jobs (not all organization jobs)
+      const assignedJobsPromises = userJobIds.map(jobId => 
+        storage.jobs.getByIdScoped(jobId, organizationId)
+      );
+      const assignedJobsResults = await Promise.all(assignedJobsPromises);
+      const assignedJobs = assignedJobsResults.filter((job): job is NonNullable<typeof job> => job !== undefined);
+      
+      // Get ONLY forms submitted by this user
+      const allForms = await storage.forms.getByOrganization(organizationId);
+      const myForms = allForms.filter(form => form.submittedById === user.id);
+      
+      // Get ONLY incidents reported by this user
+      const allIncidents = await storage.incidents.getByOrganization(organizationId);
+      const myIncidents = allIncidents.filter(incident => incident.reportedById === user.id);
+      
+      res.json({
+        assignedJobs: assignedJobs.filter(j => j.status === 'active'),
+        myForms: myForms.slice(0, 10),
+        myIncidents: myIncidents.slice(0, 10),
+        stats: {
+          assignedJobsCount: assignedJobs.length,
+          activeAssignments: assignedJobs.filter(j => j.status === 'active').length,
+          formsSubmitted: myForms.length,
+          incidentsReported: myIncidents.length,
+        },
       });
     } catch (error: any) {
       res.status(500).json({ error: error.message });

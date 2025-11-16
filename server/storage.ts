@@ -134,6 +134,7 @@ export interface IStorage {
   jobMembers: {
     create(data: InsertJobMember): Promise<JobMember>;
     getByJob(jobId: number): Promise<JobMember[]>;
+    getByUser(userId: number): Promise<JobMember[]>;
   };
   
   forms: {
@@ -632,6 +633,10 @@ export class DatabaseStorage implements IStorage {
     
     getByJob: async (jobId: number): Promise<JobMember[]> => {
       return db.select().from(jobMembers).where(eq(jobMembers.jobId, jobId));
+    },
+    
+    getByUser: async (userId: number): Promise<JobMember[]> => {
+      return db.select().from(jobMembers).where(eq(jobMembers.userId, userId));
     },
   };
   

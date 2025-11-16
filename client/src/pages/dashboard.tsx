@@ -1,12 +1,15 @@
 import { useAuth } from "@/hooks/useAuth";
 import { getRoleGroup } from "@shared/rbac-config";
 import { DashboardStats } from "@/components/dashboard-stats";
-import { RecentForms } from "@/components/recent-forms";
-import { ActiveJobs } from "@/components/active-jobs";
-import { IncidentAlerts } from "@/components/incident-alerts";
+import { AdminOverview } from "@/components/admin-overview";
 import { FieldDashboard } from "@/components/field-dashboard";
+import { IncidentAlerts } from "@/components/incident-alerts";
+import { hasCapability } from "@/lib/rbac";
 
 function ManagementDashboard() {
+  const { user } = useAuth();
+  const canViewAll = hasCapability(user, "canViewAll");
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div>
@@ -14,14 +17,16 @@ function ManagementDashboard() {
         <p className="text-muted-foreground mt-1 text-sm sm:text-base">Welcome back. Here's what's happening today.</p>
       </div>
 
-      <DashboardStats />
-
-      <div className="grid gap-4 sm:gap-6 lg:grid-cols-2">
-        <RecentForms />
-        <IncidentAlerts />
-      </div>
-
-      <ActiveJobs />
+      {canViewAll ? (
+        <AdminOverview />
+      ) : (
+        <>
+          <DashboardStats />
+          <div className="text-center py-8 text-muted-foreground">
+            Limited dashboard access. Contact your administrator for full access.
+          </div>
+        </>
+      )}
     </div>
   );
 }

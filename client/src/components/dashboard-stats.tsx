@@ -3,8 +3,19 @@ import { Briefcase, FileText, AlertTriangle, CheckCircle2 } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
 
+interface DashboardStats {
+  activeJobs: number;
+  formsPending: number;
+  openIncidents: number;
+  complianceRate: number;
+  jobs?: { total: number; active: number; completed: number };
+  forms?: { total: number; pending: number; completed: number };
+  incidents?: { total: number; open: number; resolved: number };
+  sites?: { total: number; active: number; completed: number; archived: number };
+}
+
 export function DashboardStats() {
-  const { data: stats, isLoading } = useQuery({
+  const { data: stats, isLoading } = useQuery<DashboardStats>({
     queryKey: ["/api/dashboard/stats"],
   });
 
