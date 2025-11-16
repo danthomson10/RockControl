@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { insertClientSchema, insertSiteSchema, insertSiteContactSchema, insertSiteFileSchema, insertJobSchema, insertFormSchema, insertIncidentSchema, insertAccessRequestSchema } from "@shared/schema";
+import { insertClientSchema, insertSiteSchema, insertSiteContactSchema, insertSiteFileSchema, insertJobSchema, insertFormSchema, insertFormTemplateSchema, insertIncidentSchema, insertAccessRequestSchema } from "@shared/schema";
 import { 
   registerSchema, 
   loginSchema, 
@@ -592,6 +592,92 @@ export async function registerRoutes(app: Express): Promise<void> {
       if (error instanceof z.ZodError) {
         return res.status(400).json({ error: error.errors });
       }
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  // Form Templates - Admin only (OrgAdmin/HSEManager)
+  app.get("/api/form-templates", ...withAuth(isAuthenticated), requireCapability("canManageForms"), async (req: any, res) => {
+    try {
+      const organizationId = req.currentUser!.organizationId;
+      const includeInactive = req.query.includeInactive === 'true';
+      const templates = await storage.formTemplates.getByOrganization(organizationId, includeInactive);
+      res.json(templates);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.get("/api/form-templates/:id", ...withAuth(isAuthenticated), requireCapability("canManageForms"), async (req: any, res) => {
+    try {
+      const organizationId = req.currentUser!.organizationId;
+      const id = parseInt(req.params.id);
+      const template = await storage.formTemplates.getByIdScoped(id, organizationId);
+      
+      if (!template) {
+        return res.status(404).json({ error: "Form template not found" });
+      }
+      
+      res.json(template);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.post("/api/form-templates", ...withAuth(isAuthenticated), requireCapability("canManageForms"), async (req: any, res) => {
+    try {
+      const user = req.currentUser!;
+      const organizationId = user.organizationId;
+      const data = insertFormTemplateSchema.parse(req.body);
+      
+      // Enforce tenant isolation - override organizationId and createdById
+      const template = await storage.formTemplates.create({ 
+        ...data, 
+        organizationId,
+        createdById: user.id 
+      });
+      res.status(201).json(template);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.patch("/api/form-templates/:id", ...withAuth(isAuthenticated), requireCapability("canManageForms"), async (req: any, res) => {
+    try {
+      const user = req.currentUser!;
+      const organizationId = user.organizationId;
+      const id = parseInt(req.params.id);
+      const data = insertFormTemplateSchema.partial().parse(req.body);
+      
+      // Use scoped update - enforces tenant isolation at storage layer
+      const template = await storage.formTemplates.update(id, organizationId, data);
+      
+      if (!template) {
+        return res.status(404).json({ error: "Form template not found" });
+      }
+      
+      res.json(template);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ error: error.errors });
+      }
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.delete("/api/form-templates/:id", ...withAuth(isAuthenticated), requireCapability("canManageForms"), async (req: any, res) => {
+    try {
+      const user = req.currentUser!;
+      const organizationId = user.organizationId;
+      const id = parseInt(req.params.id);
+      
+      // Soft delete - marks as inactive
+      await storage.formTemplates.delete(id, organizationId);
+      res.status(204).send();
+    } catch (error: any) {
       res.status(500).json({ error: error.message });
     }
   });

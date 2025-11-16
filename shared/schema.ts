@@ -19,7 +19,9 @@ export const siteStatusEnum = pgEnum('site_status', ['active', 'completed', 'arc
 
 export const fileTypeEnum = pgEnum('file_type', ['image', 'drone', 'contract', 'document']);
 
-export const formTypeEnum = pgEnum('form_type', ['take-5', 'variation', 'crew-briefing', 'risk-control-plan']);
+export const formTypeEnum = pgEnum('form_type', ['take-5', 'variation', 'crew-briefing', 'risk-control-plan', 'incident-report']);
+
+export const fieldTypeEnum = pgEnum('field_type', ['text', 'textarea', 'radio', 'checkbox', 'date', 'time', 'number']);
 
 export const formStatusEnum = pgEnum('form_status', ['draft', 'pending', 'approved', 'rejected', 'completed']);
 
@@ -247,6 +249,41 @@ export const insertFormSchema = createInsertSchema(forms).omit({
 });
 export type InsertForm = z.infer<typeof insertFormSchema>;
 export type Form = typeof forms.$inferSelect;
+
+export const formTemplates = pgTable("form_templates", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id),
+  name: text("name").notNull(),
+  description: text("description"),
+  type: formTypeEnum("type").notNull(),
+  schema: jsonb("schema").notNull(),
+  active: boolean("active").notNull().default(true),
+  createdById: integer("created_by_id").notNull().references(() => users.id),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertFormTemplateSchema = createInsertSchema(formTemplates).omit({
+  id: true,
+  organizationId: true,
+  createdById: true,
+  createdAt: true,
+  updatedAt: true,
+}).extend({
+  schema: z.object({
+    questions: z.array(z.object({
+      id: z.string(),
+      label: z.string(),
+      fieldType: z.enum(['text', 'textarea', 'radio', 'checkbox', 'date', 'time', 'number']),
+      required: z.boolean().default(false),
+      options: z.array(z.string()).optional(),
+      placeholder: z.string().optional(),
+      helpText: z.string().optional(),
+    })),
+  }),
+});
+export type InsertFormTemplate = z.infer<typeof insertFormTemplateSchema>;
+export type FormTemplate = typeof formTemplates.$inferSelect;
 
 export const incidents = pgTable("incidents", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),

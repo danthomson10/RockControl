@@ -1,4 +1,4 @@
-import { Home, Briefcase, MapPin, Clipboard, CheckSquare, AlertTriangle, FileText, Users, Settings, HelpCircle, ClipboardList, HardHat } from "lucide-react";
+import { Home, Briefcase, MapPin, Clipboard, CheckSquare, AlertTriangle, FileText, Users, Settings, HelpCircle, ClipboardList, HardHat, FilePlus } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -33,6 +33,7 @@ const safetyItems = [
 ];
 
 const adminItems = [
+  { title: "Form Builder", icon: FilePlus, url: "/form-builder" },
   { title: "Users & Roles", icon: Users, url: "/admin/users" },
   { title: "Settings", icon: Settings, url: "/admin/settings" },
 ];

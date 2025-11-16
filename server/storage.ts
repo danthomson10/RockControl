@@ -9,6 +9,7 @@ import {
   jobs,
   jobMembers,
   forms,
+  formTemplates,
   incidents,
   accessRequests,
   oauthConnections,
@@ -31,6 +32,8 @@ import {
   type JobMember,
   type InsertForm,
   type Form,
+  type InsertFormTemplate,
+  type FormTemplate,
   type InsertIncident,
   type Incident,
   type InsertAccessRequest,
@@ -143,6 +146,16 @@ export interface IStorage {
       pending: number;
       completed: number;
     }>;
+  };
+  
+  formTemplates: {
+    create(data: InsertFormTemplate): Promise<FormTemplate>;
+    getById(id: number): Promise<FormTemplate | undefined>;
+    getByIdScoped(id: number, organizationId: number): Promise<FormTemplate | undefined>;
+    getByOrganization(organizationId: number, includeInactive?: boolean): Promise<FormTemplate[]>;
+    getByType(organizationId: number, type: string): Promise<FormTemplate[]>;
+    update(id: number, organizationId: number, data: Partial<Omit<InsertFormTemplate, 'organizationId' | 'createdById'>>): Promise<FormTemplate | undefined>;
+    delete(id: number, organizationId: number): Promise<void>;
   };
   
   incidents: {
@@ -686,6 +699,68 @@ export class DatabaseStorage implements IStorage {
         pending: allForms.filter(f => f.status === 'pending').length,
         completed: allForms.filter(f => f.status === 'completed').length,
       };
+    },
+  };
+  
+  formTemplates = {
+    create: async (data: InsertFormTemplate): Promise<FormTemplate> => {
+      const [template] = await db.insert(formTemplates).values(data).returning();
+      return template;
+    },
+    
+    getById: async (id: number): Promise<FormTemplate | undefined> => {
+      const [template] = await db.select().from(formTemplates).where(eq(formTemplates.id, id));
+      return template;
+    },
+    
+    getByIdScoped: async (id: number, organizationId: number): Promise<FormTemplate | undefined> => {
+      const [template] = await db.select().from(formTemplates)
+        .where(and(eq(formTemplates.id, id), eq(formTemplates.organizationId, organizationId)));
+      return template;
+    },
+    
+    getByOrganization: async (organizationId: number, includeInactive?: boolean): Promise<FormTemplate[]> => {
+      if (includeInactive) {
+        return db.select().from(formTemplates)
+          .where(eq(formTemplates.organizationId, organizationId))
+          .orderBy(desc(formTemplates.createdAt));
+      }
+      
+      return db.select().from(formTemplates)
+        .where(and(eq(formTemplates.organizationId, organizationId), eq(formTemplates.active, true)))
+        .orderBy(desc(formTemplates.createdAt));
+    },
+    
+    getByType: async (organizationId: number, type: string): Promise<FormTemplate[]> => {
+      return db.select().from(formTemplates)
+        .where(and(
+          eq(formTemplates.organizationId, organizationId),
+          eq(formTemplates.type, type),
+          eq(formTemplates.active, true)
+        ))
+        .orderBy(desc(formTemplates.createdAt));
+    },
+    
+    update: async (id: number, organizationId: number, data: Partial<Omit<InsertFormTemplate, 'organizationId' | 'createdById'>>): Promise<FormTemplate | undefined> => {
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined) {
+          updates[key] = value;
+        }
+      });
+      
+      const [template] = await db.update(formTemplates)
+        .set(updates)
+        .where(and(eq(formTemplates.id, id), eq(formTemplates.organizationId, organizationId)))
+        .returning();
+      return template;
+    },
+    
+    delete: async (id: number, organizationId: number): Promise<void> => {
+      await db.update(formTemplates)
+        .set({ active: false, updatedAt: new Date() })
+        .where(and(eq(formTemplates.id, id), eq(formTemplates.organizationId, organizationId)));
     },
   };
   
