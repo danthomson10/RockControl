@@ -55,9 +55,8 @@ export default function Submissions() {
     const matchesStatus = statusFilter === "all" || form.status === statusFilter;
     const matchesType = typeFilter === "all" || form.type === typeFilter;
     
-    // Check if form was submitted via voice (formCode starts with "VOICE-")
-    // This is reliable since we control the voice submission code generation
-    const isVoiceSubmission = form.formCode.startsWith("VOICE-");
+    // Check source field from database (defaults to 'web', set to 'voice' for voice submissions)
+    const isVoiceSubmission = form.source === 'voice';
     const matchesSource = 
       sourceFilter === "all" || 
       (sourceFilter === "voice" && isVoiceSubmission) ||
@@ -215,7 +214,7 @@ export default function Submissions() {
       ) : (
         <div className="space-y-3">
           {filteredForms.map((form) => {
-            const isVoiceSubmission = form.formCode.startsWith("VOICE-");
+            const isVoiceSubmission = form.source === 'voice';
             
             return (
               <Card key={form.id} className="hover-elevate cursor-pointer" data-testid={`form-card-${form.formCode}`}>

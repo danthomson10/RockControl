@@ -25,6 +25,8 @@ export const fieldTypeEnum = pgEnum('field_type', ['text', 'textarea', 'radio', 
 
 export const formStatusEnum = pgEnum('form_status', ['draft', 'pending', 'approved', 'rejected', 'completed']);
 
+export const formSourceEnum = pgEnum('form_source', ['web', 'voice']);
+
 export const incidentSeverityEnum = pgEnum('incident_severity', ['low', 'medium', 'high', 'critical']);
 
 export const incidentStatusEnum = pgEnum('incident_status', ['open', 'investigating', 'resolved', 'closed']);
@@ -231,6 +233,7 @@ export const forms = pgTable("forms", {
   formCode: text("form_code").notNull().unique(),
   type: formTypeEnum("type").notNull(),
   status: formStatusEnum("status").notNull().default('draft'),
+  source: formSourceEnum("source").notNull().default('web'),
   formData: jsonb("form_data").notNull(),
   signature: text("signature"),
   signerName: text("signer_name"),

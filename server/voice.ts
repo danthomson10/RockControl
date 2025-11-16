@@ -73,8 +73,9 @@ export function setupVoiceRoutes(app: Router, storage: DatabaseStorage) {
         jobId: 1, // Default job for voice submissions
         formCode,
         type: formtype,
+        source: 'voice',
         formData: responses,
-        status: 'submitted',
+        status: 'pending',
         submittedById: 1, // System user for voice submissions
       });
       
@@ -198,8 +199,9 @@ export function setupVoiceRoutes(app: Router, storage: DatabaseStorage) {
         jobId: jobId || 1,
         formCode,
         type: formType || 'incident-report',
+        source: 'voice',
         formData,
-        status: 'submitted',
+        status: 'pending',
         submittedById: 1,
       });
       
