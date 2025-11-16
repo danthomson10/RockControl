@@ -23,7 +23,7 @@ Your Twilio phone number **+6435672557** is already configured with the correct 
 4. Set the following:
    - **Configure With:** Webhook
    - **A CALL COMES IN:**
-     - **Webhook URL:** `https://rock-control-web-app-danthomson10.replit.app/api/voice/incoming-call`
+     - **Webhook URL:** `https://rockcontrol.app/api/voice/incoming-call`
      - **HTTP Method:** POST
 5. Click **Save Configuration**
 
@@ -31,7 +31,7 @@ Your Twilio phone number **+6435672557** is already configured with the correct 
 
 ```bash
 twilio phone-numbers:update YOUR_PHONE_NUMBER \
-  --voice-url https://rock-control-web-app-danthomson10.replit.app/api/voice/incoming-call \
+  --voice-url https://rockcontrol.app/api/voice/incoming-call \
   --voice-method POST
 ```
 
@@ -49,7 +49,7 @@ Rock Control provides two custom API tools that ElevenLabs uses to fetch forms a
 - **Name:** Get Form Questions
 - **Description:** "Retrieves the list of questions for a specific form type"
 - **Method:** GET
-- **URL:** `https://rock-control-web-app-danthomson10.replit.app/api/voice/forms/{formType}`
+- **URL:** `https://rockcontrol.app/api/voice/forms/{formType}`
 
 **Path Parameters:**
 - **formType** (string, required): The type of form (e.g., "incident-report", "take-5", "crew-briefing")
@@ -92,7 +92,7 @@ Rock Control provides two custom API tools that ElevenLabs uses to fetch forms a
 - **Name:** Submit Form
 - **Description:** "Submits completed form data with caller information"
 - **Method:** POST
-- **URL:** `https://rock-control-web-app-danthomson10.replit.app/api/voice/forms/submit`
+- **URL:** `https://rockcontrol.app/api/voice/forms/submit`
 - **Execution Mode:** Immediate
 - **Response Timeout:** 20 seconds
 
@@ -134,7 +134,69 @@ Rock Control provides two custom API tools that ElevenLabs uses to fetch forms a
 }
 ```
 
-### 3. Test the Integration
+### 3. Configure ElevenLabs Webhooks
+
+Rock Control provides webhook endpoints that ElevenLabs calls during the conversation lifecycle:
+
+#### Webhook 1: Conversation Initiation
+
+**Purpose:** Provides context to the AI when a call starts
+
+**Configuration in ElevenLabs Dashboard:**
+- **Name:** Conversation Initiation Client Data
+- **URL:** `https://rockcontrol.app/api/elevenlabs/conversation-start`
+- **Method:** POST
+- **When:** Called when a conversation begins
+
+**Response Format:**
+```json
+{
+  "available_forms": [
+    {
+      "type": "incident-report",
+      "name": "Incident Report",
+      "description": "Report safety incidents and near misses"
+    },
+    {
+      "type": "take-5",
+      "name": "Take-5 Safety Assessment",
+      "description": "Pre-work safety check"
+    }
+  ],
+  "organization": "Rock Control",
+  "greeting_context": "You are a safety assistant for Rock Control...",
+  "phone_number": "+64211234567"
+}
+```
+
+#### Webhook 2: Post-Call Summary
+
+**Purpose:** Receives call transcript and metadata after conversation ends
+
+**Configuration in ElevenLabs Dashboard:**
+- **Name:** Post-call Webhook
+- **URL:** `https://rockcontrol.app/api/elevenlabs/conversation-end`
+- **Method:** POST
+- **When:** Called after a conversation completes
+
+**Received Data:**
+- `call_id` - Unique identifier for the call
+- `transcript` - Full conversation transcript
+- `duration_seconds` - Call duration
+- `caller_phone_number` - Caller's phone number
+- `agent_id` - ElevenLabs agent ID
+- `metadata` - Additional call metadata
+
+**Response:**
+```json
+{
+  "success": true,
+  "message": "Call data logged successfully",
+  "call_id": "xyz123"
+}
+```
+
+### 4. Test the Integration
 
 1. Call **+64 3 567 2557** from your mobile phone
 2. You should hear: *"Welcome to Rock Control. Please choose a form to complete..."*
@@ -188,6 +250,10 @@ Rock Control provides two custom API tools that ElevenLabs uses to fetch forms a
 ### ElevenLabs Custom Tools (AI Agent API)
 - `GET /api/voice/forms/:formType` - Fetch form questions for a specific form type
 - `POST /api/voice/forms/submit` - Submit completed form with responses
+
+### ElevenLabs Webhooks (Conversation Lifecycle)
+- `POST /api/elevenlabs/conversation-start` - Provides initial context when call begins
+- `POST /api/elevenlabs/conversation-end` - Receives transcript and metadata when call ends
 
 ### WebSocket
 - `wss://[your-domain]/api/voice/media-stream` - Real-time audio streaming between Twilio and ElevenLabs
@@ -247,6 +313,6 @@ For issues or questions:
 
 ---
 
-**Deployment URL:** https://rock-control-web-app-danthomson10.replit.app
+**Deployment URL:** https://rockcontrol.app
 
-**Voice Webhook:** https://rock-control-web-app-danthomson10.replit.app/api/voice/incoming-call
+**Voice Webhook:** https://rockcontrol.app/api/voice/incoming-call
