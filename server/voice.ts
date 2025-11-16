@@ -1,20 +1,6 @@
 import type { Router } from 'express';
 import twilio from 'twilio';
-import crypto from 'crypto';
 import type { DatabaseStorage } from './storage';
-
-// Store active call tokens (expires after 30 seconds)
-const callTokens = new Map<string, { callerPhone: string; expiresAt: number }>();
-
-// Clean up expired tokens every minute
-setInterval(() => {
-  const now = Date.now();
-  for (const [token, data] of callTokens.entries()) {
-    if (data.expiresAt < now) {
-      callTokens.delete(token);
-    }
-  }
-}, 60000);
 
 const VoiceResponse = twilio.twiml.VoiceResponse;
 
@@ -173,23 +159,19 @@ export function setupVoiceRoutes(app: Router, storage: DatabaseStorage) {
   app.post('/api/voice/incoming-call', (req, res) => {
     try {
       const twiml = new VoiceResponse();
-      const callerPhone = req.body.From || 'unknown';
       
-      console.log('📞 Incoming call from:', callerPhone);
+      console.log('📞 Incoming call from:', req.body.From);
       console.log('🎙️ Streaming to ElevenLabs proxy');
       
-      // Generate short-lived token for this call (30 second validity)
-      const callToken = crypto.randomBytes(32).toString('hex');
-      callTokens.set(callToken, {
-        callerPhone,
-        expiresAt: Date.now() + 30000, // 30 seconds
-      });
-      
-      // Connect and stream audio to our WebSocket proxy with secure token
+      // Connect and stream audio to our WebSocket proxy
+      // The proxy will handle ElevenLabs authentication securely
       const connect = twiml.connect();
       const stream = connect.stream({
-        url: `wss://${req.get('host')}/api/voice/media-stream?token=${callToken}`,
+        url: `wss://${req.get('host')}/api/voice/media-stream`,
       });
+      
+      // Pass caller info (but NOT API keys - those stay server-side)
+      stream.parameter({ name: 'callerPhone', value: req.body.From || 'unknown' });
       
       res.type('text/xml');
       res.send(twiml.toString());
@@ -201,22 +183,6 @@ export function setupVoiceRoutes(app: Router, storage: DatabaseStorage) {
       res.type('text/xml');
       res.send(twiml.toString());
     }
-  });
-  
-  // Export token validation for WebSocket
-  app.get('/api/voice/validate-token/:token', (req, res) => {
-    const tokenData = callTokens.get(req.params.token);
-    if (!tokenData) {
-      return res.status(404).json({ valid: false });
-    }
-    if (tokenData.expiresAt < Date.now()) {
-      callTokens.delete(req.params.token);
-      return res.status(401).json({ valid: false, reason: 'expired' });
-    }
-    res.json({ 
-      valid: true,
-      callerPhone: tokenData.callerPhone
-    });
   });
 
   // Save voice-completed form data

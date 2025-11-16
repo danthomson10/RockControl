@@ -2,7 +2,6 @@ import { db } from "./db";
 import {
   organizations,
   users,
-  userPhoneNumbers,
   clients,
   sites,
   siteContacts,
@@ -19,8 +18,6 @@ import {
   type InsertUser,
   type User,
   type UpsertUser,
-  type InsertUserPhoneNumber,
-  type UserPhoneNumber,
   type InsertClient,
   type Client,
   type InsertSite,
@@ -60,13 +57,6 @@ export interface IStorage {
     getByOrganization(organizationId: number): Promise<User[]>;
     upsertUser(data: UpsertUser): Promise<User>;
     update(id: number, data: Partial<InsertUser>): Promise<User | undefined>;
-  };
-  
-  userPhoneNumbers: {
-    create(data: InsertUserPhoneNumber): Promise<UserPhoneNumber>;
-    getByPhoneNumber(phoneNumber: string): Promise<(UserPhoneNumber & { user: User }) | undefined>;
-    getByUserId(userId: number): Promise<UserPhoneNumber[]>;
-    updateVerification(id: number, verified: boolean): Promise<UserPhoneNumber | undefined>;
   };
   
   accessRequests: {
@@ -270,52 +260,6 @@ export class DatabaseStorage implements IStorage {
         .where(eq(users.id, id))
         .returning();
       return user;
-    },
-  };
-  
-  userPhoneNumbers = {
-    create: async (data: InsertUserPhoneNumber): Promise<UserPhoneNumber> => {
-      const [phoneNumber] = await db.insert(userPhoneNumbers).values(data).returning();
-      return phoneNumber;
-    },
-    
-    getByPhoneNumber: async (phoneNumber: string): Promise<(UserPhoneNumber & { user: User }) | undefined> => {
-      // Get most recent verified phone number record if multiple exist
-      const result = await db
-        .select()
-        .from(userPhoneNumbers)
-        .leftJoin(users, eq(userPhoneNumbers.userId, users.id))
-        .where(and(
-          eq(userPhoneNumbers.phoneNumber, phoneNumber),
-          eq(userPhoneNumbers.verified, true)
-        ))
-        .orderBy(desc(userPhoneNumbers.verifiedAt))
-        .limit(1);
-      
-      if (result.length === 0 || !result[0].users) {
-        return undefined;
-      }
-      
-      return {
-        ...result[0].user_phone_numbers,
-        user: result[0].users,
-      };
-    },
-    
-    getByUserId: async (userId: number): Promise<UserPhoneNumber[]> => {
-      return db.select().from(userPhoneNumbers).where(eq(userPhoneNumbers.userId, userId));
-    },
-    
-    updateVerification: async (id: number, verified: boolean): Promise<UserPhoneNumber | undefined> => {
-      const [phoneNumber] = await db.update(userPhoneNumbers)
-        .set({ 
-          verified, 
-          verifiedAt: verified ? new Date() : null,
-          updatedAt: new Date() 
-        })
-        .where(eq(userPhoneNumbers.id, id))
-        .returning();
-      return phoneNumber;
     },
   };
   

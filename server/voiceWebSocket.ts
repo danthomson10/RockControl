@@ -2,18 +2,6 @@ import { WebSocketServer, WebSocket } from 'ws';
 import type { Server } from 'http';
 import type { DatabaseStorage } from './storage';
 
-// Token validation - imported from voice.ts module scope
-// We'll validate tokens via HTTP endpoint since we can't directly access the Map
-async function validateCallToken(token: string, host: string): Promise<{ valid: boolean; callerPhone?: string }> {
-  try {
-    const response = await fetch(`http://${host}/api/voice/validate-token/${token}`);
-    return await response.json();
-  } catch (error) {
-    console.error('Token validation error:', error);
-    return { valid: false };
-  }
-}
-
 interface CallSession {
   streamSid: string;
   callSid: string;
@@ -38,33 +26,12 @@ export function setupVoiceWebSocket(server: Server, storage: DatabaseStorage) {
     path: '/api/voice/media-stream'
   });
 
-  wss.on('connection', async (ws, req) => {
-    console.log('📞 New call connection attempt');
+  wss.on('connection', (ws, req) => {
+    console.log('📞 New call connection');
     
-    // Extract and validate call token from WebSocket URL
     const url = new URL(req.url!, `ws://${req.headers.host}`);
-    const callToken = url.searchParams.get('token');
-    
-    if (!callToken) {
-      console.log('❌ WebSocket connection denied: missing token');
-      ws.close(1008, 'Missing authentication token');
-      return;
-    }
-    
-    // Validate token and get trusted caller phone
-    const tokenValidation = await validateCallToken(callToken, req.headers.host || 'localhost:5000');
-    if (!tokenValidation.valid || !tokenValidation.callerPhone) {
-      console.log('❌ WebSocket connection denied: invalid or expired token');
-      ws.close(1008, 'Invalid or expired authentication token');
-      return;
-    }
-    
-    const trustedCallerPhone = tokenValidation.callerPhone;
-    console.log('✅ WebSocket authenticated for:', trustedCallerPhone);
-    
-    // Extract formType and templateId from WebSocket URL query params (set by Twilio webhook config)
-    const trustedFormType = url.searchParams.get('formType') || '';
-    const trustedTemplateId = parseInt(url.searchParams.get('templateId') || '0');
+    const formType = url.searchParams.get('formType') || '';
+    const templateId = parseInt(url.searchParams.get('templateId') || '0');
     
     let session: CallSession | null = null;
 
@@ -74,13 +41,12 @@ export function setupVoiceWebSocket(server: Server, storage: DatabaseStorage) {
 
         switch (msg.event) {
           case 'start':
-            // Use trusted caller phone from validated token, NOT from Twilio message (which could be spoofed)
             session = {
               streamSid: msg.streamSid,
               callSid: msg.start.callSid,
-              callerPhone: trustedCallerPhone,
-              formType: trustedFormType,
-              templateId: trustedTemplateId,
+              callerPhone: msg.start.customParameters?.callerPhone || 'unknown',
+              formType: msg.start.customParameters?.formType || '',
+              templateId: parseInt(msg.start.customParameters?.templateId || '0'),
               twilioWs: ws,
               conversationState: {
                 currentQuestionIndex: 0,
@@ -89,37 +55,7 @@ export function setupVoiceWebSocket(server: Server, storage: DatabaseStorage) {
             };
             
             activeSessions.set(msg.streamSid, session);
-            console.log(`📞 Call started: ${session.callSid} from ${trustedCallerPhone}`);
-            
-            // Authorize caller by phone number
-            const phoneAuth = await storage.userPhoneNumbers.getByPhoneNumber(trustedCallerPhone);
-            if (!phoneAuth || !phoneAuth.verified || !phoneAuth.allowVoiceAccess) {
-              console.log(`❌ Unauthorized phone number: ${trustedCallerPhone}`);
-              ws.close();
-              activeSessions.delete(msg.streamSid);
-              return;
-            }
-            
-            // Check if user is active
-            if (!phoneAuth.user.active) {
-              console.log(`❌ Inactive user: ${phoneAuth.user.email}`);
-              ws.close();
-              activeSessions.delete(msg.streamSid);
-              return;
-            }
-            
-            // Check if caller is allowed to access requested form type
-            if (phoneAuth.allowedFormTypes && phoneAuth.allowedFormTypes.length > 0) {
-              // If form restrictions exist, formType MUST be provided and MUST be in allowed list
-              if (!trustedFormType || !phoneAuth.allowedFormTypes.includes(trustedFormType)) {
-                console.log(`❌ Form type '${trustedFormType || 'missing'}' not allowed for ${phoneAuth.user.email}`);
-                ws.close();
-                activeSessions.delete(msg.streamSid);
-                return;
-              }
-            }
-            
-            console.log(`✅ Authorized caller: ${phoneAuth.user.name} (${phoneAuth.user.email}, role: ${phoneAuth.user.role})`);
+            console.log(`📞 Call started: ${session.callSid}`);
             
             // Initialize ElevenLabs conversation
             await initializeElevenLabsConversation(session, storage);
