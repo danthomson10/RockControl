@@ -58,6 +58,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/forms" component={Forms} />
       <Route path="/forms/:id" component={FillForm} />
+      <Route path="/variations" component={VariationForm} />
       <Route path="/submissions" component={Submissions} />
       <Route path="/form-builder" component={FormBuilder} />
       <Route path="/jobs" component={Jobs} />

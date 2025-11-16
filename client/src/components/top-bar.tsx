@@ -73,7 +73,7 @@ export function TopBar() {
               <a href="/forms" className="cursor-pointer">Take-5 Form</a>
             </DropdownMenuItem>
             <DropdownMenuItem asChild data-testid="quick-add-variation">
-              <a href="/forms" className="cursor-pointer">Variation</a>
+              <a href="/variations" className="cursor-pointer">Variation</a>
             </DropdownMenuItem>
             <DropdownMenuItem asChild data-testid="quick-add-incident">
               <a href="/forms" className="cursor-pointer">Incident Report</a>
@@ -95,7 +95,7 @@ export function TopBar() {
               <a href="/forms" className="cursor-pointer">Take-5 Form</a>
             </DropdownMenuItem>
             <DropdownMenuItem asChild data-testid="quick-add-variation">
-              <a href="/forms" className="cursor-pointer">Variation</a>
+              <a href="/variations" className="cursor-pointer">Variation</a>
             </DropdownMenuItem>
             <DropdownMenuItem asChild data-testid="quick-add-incident">
               <a href="/forms" className="cursor-pointer">Incident Report</a>
