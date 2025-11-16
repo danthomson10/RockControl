@@ -130,15 +130,7 @@ async function initializeElevenLabsConversation(
 
     session.elevenLabsWs.on('open', () => {
       console.log('✅ ElevenLabs connection established');
-      
-      // Send initial conversation context
-      session.elevenLabsWs?.send(JSON.stringify({
-        type: 'conversation_initiation_client_data',
-        conversation_initiation_client_data: {
-          caller_phone: session.callerPhone,
-          form_type: session.formType,
-        }
-      }));
+      // Connection is ready - ElevenLabs will start the conversation
     });
 
     session.elevenLabsWs.on('message', (data: Buffer) => {
@@ -154,17 +146,18 @@ async function initializeElevenLabsConversation(
         switch (message.type) {
           case 'audio':
             // Forward audio from ElevenLabs back to Twilio
-            if (message.audio_base64 && session.twilioWs?.readyState === WebSocket.OPEN) {
-              console.log(`🔊 Sending audio to Twilio – length: ${message.audio_base64.length}`);
+            const audioData = message.audio;
+            if (audioData && session.twilioWs?.readyState === WebSocket.OPEN) {
+              console.log(`🔊 Sending audio to Twilio – length: ${audioData.length}`);
               session.twilioWs.send(JSON.stringify({
                 event: 'media',
                 streamSid: session.streamSid,
                 media: {
-                  payload: message.audio_base64,
+                  payload: audioData,
                 },
               }));
-            } else if (!message.audio_base64) {
-              console.warn('⚠️ Audio message received but no audio_base64 field found');
+            } else if (!audioData) {
+              console.warn('⚠️ Audio message received but no audio data found:', JSON.stringify(message, null, 2));
             }
             break;
             
