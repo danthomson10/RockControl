@@ -28,12 +28,12 @@ const workItems = [
 ];
 
 const safetyItems = [
-  { title: "Incidents", icon: AlertTriangle, url: "/safety/incidents" },
   { title: "Inspections", icon: CheckSquare, url: "/safety/inspections" },
   { title: "Training", icon: HardHat, url: "/safety/training" },
 ];
 
 const adminItems = [
+  { title: "Reports", icon: FileText, url: "/submissions" },
   { title: "Form Builder", icon: FilePlus, url: "/form-builder" },
   { title: "Users & Roles", icon: Users, url: "/admin/users" },
   { title: "Settings", icon: Settings, url: "/admin/settings" },
