@@ -76,7 +76,6 @@ export function setupVoiceRoutes(app: Router, storage: DatabaseStorage) {
         formData: responses,
         status: 'submitted',
         submittedById: 1, // System user for voice submissions
-        submittedAt: new Date(),
       });
       
       console.log('✅ Voice form saved:', formCode);
@@ -214,7 +213,6 @@ export function setupVoiceRoutes(app: Router, storage: DatabaseStorage) {
         formData,
         status: 'submitted',
         submittedById: 1,
-        submittedAt: new Date(),
       });
       
       res.json({ success: true, formCode });
