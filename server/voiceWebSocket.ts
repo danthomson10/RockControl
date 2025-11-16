@@ -84,8 +84,11 @@ export function setupVoiceWebSocket(server: Server, storage: DatabaseStorage) {
       }
     });
 
-    ws.on('close', () => {
-      console.log('📞 Call connection closed');
+    ws.on('close', (code, reason) => {
+      console.log(`📞 Twilio connection closed - Code: ${code}, Reason: ${reason.toString()}`);
+      if (code === 1006 || code === 1011) {
+        console.error(`⚠️ Twilio close code ${code} - likely audio format mismatch!`);
+      }
       if (session) {
         if (session.elevenLabsWs) {
           session.elevenLabsWs.close();
@@ -113,10 +116,9 @@ async function initializeElevenLabsConversation(
   console.log(`🤖 Connecting to ElevenLabs agent: ${ELEVENLABS_AGENT_ID}`);
   
   try {
-    // Connect to ElevenLabs Conversational AI WebSocket
-    // Note: output_format parameter might not be supported for Conversational AI
-    // Trying without it first to establish connection
-    const wsUrl = `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${ELEVENLABS_AGENT_ID}`;
+    // Connect to ElevenLabs Conversational AI WebSocket with Twilio-compatible audio
+    // Using ulaw_8000 (μ-law 8kHz) which Twilio media streams expect
+    const wsUrl = `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${ELEVENLABS_AGENT_ID}&output_format=ulaw_8000`;
     
     console.log(`🔗 Connecting to: ${wsUrl}`);
     
@@ -153,7 +155,7 @@ async function initializeElevenLabsConversation(
           case 'audio':
             // Forward audio from ElevenLabs back to Twilio
             if (message.audio_base64 && session.twilioWs?.readyState === WebSocket.OPEN) {
-              console.log('🔊 Forwarding audio chunk to Twilio');
+              console.log(`🔊 Sending audio to Twilio – length: ${message.audio_base64.length}`);
               session.twilioWs.send(JSON.stringify({
                 event: 'media',
                 streamSid: session.streamSid,
@@ -161,6 +163,8 @@ async function initializeElevenLabsConversation(
                   payload: message.audio_base64,
                 },
               }));
+            } else if (!message.audio_base64) {
+              console.warn('⚠️ Audio message received but no audio_base64 field found');
             }
             break;
             
