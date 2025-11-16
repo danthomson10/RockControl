@@ -33,6 +33,11 @@ setInterval(() => {
 }, 10 * 60 * 1000);
 
 export async function registerRoutes(app: Express) {
+  // Health check endpoint (must be first, before auth)
+  app.get('/health', (_req, res) => {
+    res.status(200).json({ status: 'ok', timestamp: new Date().toISOString() });
+  });
+  
   // Setup authentication
   await setupAuth(app);
   
