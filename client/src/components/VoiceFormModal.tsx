@@ -35,6 +35,7 @@ export default function VoiceFormModal({
   const [formSchema, setFormSchema] = useState<any>(null);
   const [showSignature, setShowSignature] = useState(false);
   const [signature, setSignature] = useState<string>("");
+  const [currentAssistantMessage, setCurrentAssistantMessage] = useState<string>("");
   
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
@@ -273,19 +274,35 @@ ${formSchema.requiresSignature ? "- After collecting all information, inform the
 
     switch (event.type) {
       case "response.audio_transcript.delta":
-      case "response.text.delta":
-        // Accumulate assistant's response
+        // Accumulate assistant's response in real-time
+        if (event.delta) {
+          setCurrentAssistantMessage((prev) => prev + event.delta);
+        }
         break;
         
       case "response.audio_transcript.done":
+        // Complete assistant message
         if (event.transcript) {
           addMessage("assistant", event.transcript);
+          setCurrentAssistantMessage("");
         }
         break;
 
       case "conversation.item.input_audio_transcription.completed":
+      case "input_audio_buffer.speech_stopped":
+        // User finished speaking - check for transcript
         if (event.transcript) {
           addMessage("user", event.transcript);
+        }
+        break;
+
+      case "conversation.item.created":
+        // Handle user input when transcript becomes available
+        if (event.item?.role === "user" && event.item?.content) {
+          const audioContent = event.item.content.find((c: any) => c.type === "input_audio");
+          if (audioContent?.transcript) {
+            addMessage("user", audioContent.transcript);
+          }
         }
         break;
 
@@ -376,6 +393,7 @@ ${formSchema.requiresSignature ? "- After collecting all information, inform the
     setFormData({});
     setShowSignature(false);
     setSignature("");
+    setCurrentAssistantMessage("");
   };
 
   const endConversation = () => {
@@ -431,6 +449,19 @@ ${formSchema.requiresSignature ? "- After collecting all information, inform the
                     </div>
                   </div>
                 ))}
+                
+                {/* Show current assistant message being typed */}
+                {currentAssistantMessage && (
+                  <div className="flex justify-start">
+                    <div className="max-w-[80%] rounded-lg p-3 bg-muted">
+                      <p className="text-sm">{currentAssistantMessage}</p>
+                      <span className="text-xs opacity-70 flex items-center gap-1">
+                        <Loader2 className="h-3 w-3 animate-spin" />
+                        Typing...
+                      </span>
+                    </div>
+                  </div>
+                )}
               </div>
             </Card>
 
