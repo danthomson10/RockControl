@@ -35,11 +35,20 @@ const FORM_TYPE_LABELS: Record<string, string> = {
   'variation': 'Variation',
 };
 
-export default function SearchCommand() {
-  const [open, setOpen] = useState(false);
+interface SearchCommandProps {
+  open?: boolean;
+  onOpenChange?: (open: boolean) => void;
+}
+
+export default function SearchCommand({ open: controlledOpen, onOpenChange }: SearchCommandProps = {}) {
+  const [internalOpen, setInternalOpen] = useState(false);
   const [searchQuery, setSearchQuery] = useState("");
   const [debouncedQuery, setDebouncedQuery] = useState("");
   const [, setLocation] = useLocation();
+
+  // Use controlled state if provided, otherwise use internal state
+  const open = controlledOpen !== undefined ? controlledOpen : internalOpen;
+  const setOpen = onOpenChange || setInternalOpen;
 
   // Debounce search query (300ms delay)
   useEffect(() => {

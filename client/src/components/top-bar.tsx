@@ -13,10 +13,12 @@ import {
 import { Badge } from "@/components/ui/badge";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
 import { useState } from "react";
+import SearchCommand from "@/components/search-command";
 
 export function TopBar() {
   const [theme, setTheme] = useState<"light" | "dark">("light");
   const [isOffline] = useState(false); // todo: remove mock functionality
+  const [searchOpen, setSearchOpen] = useState(false);
 
   const toggleTheme = () => {
     const newTheme = theme === "light" ? "dark" : "light";
@@ -45,18 +47,26 @@ export function TopBar() {
         </DropdownMenuContent>
       </DropdownMenu> */}
 
-      <Button variant="ghost" size="icon" className="sm:hidden" data-testid="button-mobile-search">
+      <Button 
+        variant="ghost" 
+        size="icon" 
+        className="sm:hidden" 
+        data-testid="button-mobile-search"
+        onClick={() => setSearchOpen(true)}
+      >
         <Search className="h-5 w-5" />
       </Button>
 
       <div className="flex-1 max-w-md hidden sm:block">
         <div className="relative">
-          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground" />
+          <Search className="absolute left-3 top-1/2 -translate-y-1/2 h-4 w-4 text-muted-foreground pointer-events-none" />
           <Input
             type="search"
             placeholder="Search jobs, forms, incidents... (⌘K)"
-            className="pl-9"
+            className="pl-9 cursor-pointer"
             data-testid="input-global-search"
+            onClick={() => setSearchOpen(true)}
+            readOnly
           />
         </div>
       </div>
@@ -173,6 +183,8 @@ export function TopBar() {
           </DropdownMenuContent>
         </DropdownMenu>
       </div>
+
+      <SearchCommand open={searchOpen} onOpenChange={setSearchOpen} />
     </header>
   );
 }
