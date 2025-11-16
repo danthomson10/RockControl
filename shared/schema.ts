@@ -238,6 +238,7 @@ export const forms = pgTable("forms", {
   signature: text("signature"),
   signerName: text("signer_name"),
   signedAt: timestamp("signed_at"),
+  sharepointItemId: text("sharepoint_item_id"),
   submittedById: integer("submitted_by_id").notNull().references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -300,6 +301,7 @@ export const incidents = pgTable("incidents", {
   reportedById: integer("reported_by_id").notNull().references(() => users.id),
   incidentDate: timestamp("incident_date").notNull(),
   resolvedAt: timestamp("resolved_at"),
+  sharepointItemId: text("sharepoint_item_id"),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 });
@@ -408,3 +410,25 @@ export const insertWebAuthnCredentialSchema = createInsertSchema(webauthnCredent
 });
 export type InsertWebAuthnCredential = z.infer<typeof insertWebAuthnCredentialSchema>;
 export type WebAuthnCredential = typeof webauthnCredentials.$inferSelect;
+
+// SharePoint Configuration
+export const sharepointConfig = pgTable("sharepoint_config", {
+  id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
+  organizationId: integer("organization_id").notNull().references(() => organizations.id).unique(),
+  siteUrl: text("site_url").notNull(),
+  siteId: text("site_id"),
+  incidentListId: text("incident_list_id"),
+  incidentListName: text("incident_list_name"),
+  fieldMappings: jsonb("field_mappings"),
+  enabled: boolean("enabled").notNull().default(false),
+  createdAt: timestamp("created_at").notNull().defaultNow(),
+  updatedAt: timestamp("updated_at").notNull().defaultNow(),
+});
+
+export const insertSharePointConfigSchema = createInsertSchema(sharepointConfig).omit({
+  id: true,
+  createdAt: true,
+  updatedAt: true,
+});
+export type InsertSharePointConfig = z.infer<typeof insertSharePointConfigSchema>;
+export type SharePointConfig = typeof sharepointConfig.$inferSelect;

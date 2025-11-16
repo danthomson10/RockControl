@@ -17,6 +17,7 @@ import { sendTeamsNotification } from "./microsoftTeams";
 import { loadCurrentUser, requireCapability, requireRoles, withAuth } from "./rbac";
 import cryptoRandomString from "crypto-random-string";
 import { sendAccessRequestNotification, sendAccessRequestApproved } from "./email";
+import { sharepointService } from "./sharepoint-service";
 
 // Store OAuth state/nonce temporarily (in production, use Redis or session store)
 const oauthStateStore = new Map<string, { nonce: string; codeVerifier: string; state: string; createdAt: number }>();
@@ -561,6 +562,7 @@ export async function registerRoutes(app: Express) {
     try {
       const user = req.currentUser!;
       const organizationId = user.organizationId;
+      const syncToSharePoint = req.body.syncToSharePoint;
       const data = insertFormSchema.parse(req.body);
       
       // Enforce tenant isolation - override organizationId and submittedById
@@ -569,6 +571,32 @@ export async function registerRoutes(app: Express) {
         organizationId,
         submittedById: user.id 
       });
+      
+      // SharePoint integration for incident reports
+      if (syncToSharePoint && form.type === 'incident-report') {
+        try {
+          const config = await storage.sharepointConfig.getByOrganization(organizationId);
+          
+          if (config && config.enabled) {
+            const sharepointItemId = await sharepointService.createIncidentInSharePoint(
+              config,
+              form.formData as any
+            );
+            
+            // Update form with SharePoint item ID
+            const updated = await storage.forms.update(form.id, {
+              sharepointItemId,
+            } as any);
+            
+            if (updated) {
+              form.sharepointItemId = sharepointItemId;
+            }
+          }
+        } catch (sharepointError: any) {
+          console.error('SharePoint sync failed:', sharepointError);
+        }
+      }
+      
       res.status(201).json(form);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
@@ -760,6 +788,80 @@ export async function registerRoutes(app: Express) {
       res.status(500).json({ error: error.message || "Failed to submit variation" });
     }
   });
+  
+  // ====== SharePoint Configuration Routes ======
+  
+  app.get("/api/sharepoint-config", ...withAuth(isAuthenticated), requireCapability("canManageIntegrations"), async (req: any, res) => {
+    try {
+      const organizationId = req.currentUser!.organizationId;
+      const config = await storage.sharepointConfig.getByOrganization(organizationId);
+      res.json(config || null);
+    } catch (error: any) {
+      res.status(500).json({ error: error.message });
+    }
+  });
+  
+  app.post("/api/sharepoint-config/initialize", ...withAuth(isAuthenticated), requireCapability("canManageIntegrations"), async (req: any, res) => {
+    try {
+      const organizationId = req.currentUser!.organizationId;
+      const { siteUrl, incidentListName } = req.body;
+      
+      if (!siteUrl) {
+        return res.status(400).json({ error: "Site URL is required" });
+      }
+      
+      // Initialize SharePoint connection and get site ID
+      const { siteId } = await sharepointService.initializeSharePointConfig(siteUrl, organizationId);
+      
+      // Try to discover the incident list if name provided
+      let listId: string | undefined;
+      let listName: string | undefined;
+      
+      if (incidentListName) {
+        try {
+          const listInfo = await sharepointService.discoverIncidentList(siteId, incidentListName);
+          listId = listInfo.listId;
+          listName = listInfo.listName;
+        } catch (error: any) {
+          console.warn('Failed to discover list:', error.message);
+        }
+      }
+      
+      // Upsert configuration
+      const config = await storage.sharepointConfig.upsert(organizationId, {
+        siteUrl,
+        siteId,
+        incidentListId: listId,
+        incidentListName: listName || incidentListName,
+        enabled: !!listId, // Only enable if list was found
+      });
+      
+      res.json(config);
+    } catch (error: any) {
+      console.error("SharePoint config initialization error:", error);
+      res.status(500).json({ error: error.message || "Failed to initialize SharePoint configuration" });
+    }
+  });
+  
+  app.patch("/api/sharepoint-config", ...withAuth(isAuthenticated), requireCapability("canManageIntegrations"), async (req: any, res) => {
+    try {
+      const organizationId = req.currentUser!.organizationId;
+      const updates = req.body;
+      
+      const existingConfig = await storage.sharepointConfig.getByOrganization(organizationId);
+      if (!existingConfig) {
+        return res.status(404).json({ error: "SharePoint configuration not found. Please initialize first." });
+      }
+      
+      const config = await storage.sharepointConfig.update(existingConfig.id, updates);
+      res.json(config);
+    } catch (error: any) {
+      console.error("SharePoint config update error:", error);
+      res.status(500).json({ error: error.message || "Failed to update SharePoint configuration" });
+    }
+  });
+  
+  // ====== Incidents Routes ======
   
   app.get("/api/incidents", isAuthenticated, async (req: any, res) => {
     try {

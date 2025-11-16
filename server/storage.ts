@@ -13,6 +13,7 @@ import {
   incidents,
   accessRequests,
   oauthConnections,
+  sharepointConfig as sharepointConfigTable,
   type InsertOrganization,
   type Organization,
   type InsertUser,
@@ -40,6 +41,8 @@ import {
   type AccessRequest,
   type InsertOAuthConnection,
   type OAuthConnection,
+  type InsertSharePointConfig,
+  type SharePointConfig,
 } from "@shared/schema";
 import { eq, desc, and, sql } from "drizzle-orm";
 
@@ -171,6 +174,14 @@ export interface IStorage {
       open: number;
       resolved: number;
     }>;
+  };
+  
+  sharepointConfig: {
+    create(data: InsertSharePointConfig): Promise<SharePointConfig>;
+    getById(id: number): Promise<SharePointConfig | undefined>;
+    getByOrganization(organizationId: number): Promise<SharePointConfig | undefined>;
+    update(id: number, data: Partial<Omit<InsertSharePointConfig, 'organizationId'>>): Promise<SharePointConfig | undefined>;
+    upsert(organizationId: number, data: Partial<Omit<InsertSharePointConfig, 'organizationId'>>): Promise<SharePointConfig>;
   };
 }
 
@@ -839,6 +850,65 @@ export class DatabaseStorage implements IStorage {
         open: allIncidents.filter(i => i.status === 'open' || i.status === 'investigating').length,
         resolved: allIncidents.filter(i => i.status === 'resolved' || i.status === 'closed').length,
       };
+    },
+  };
+  
+  sharepointConfig = {
+    create: async (data: InsertSharePointConfig): Promise<SharePointConfig> => {
+      const [config] = await db.insert(sharepointConfigTable).values(data).returning();
+      return config;
+    },
+    
+    getById: async (id: number): Promise<SharePointConfig | undefined> => {
+      const [config] = await db.select().from(sharepointConfigTable).where(eq(sharepointConfigTable.id, id));
+      return config;
+    },
+    
+    getByOrganization: async (organizationId: number): Promise<SharePointConfig | undefined> => {
+      const [config] = await db.select().from(sharepointConfigTable)
+        .where(eq(sharepointConfigTable.organizationId, organizationId));
+      return config;
+    },
+    
+    update: async (id: number, data: Partial<Omit<InsertSharePointConfig, 'organizationId'>>): Promise<SharePointConfig | undefined> => {
+      const updates: Record<string, any> = { updatedAt: new Date() };
+      
+      Object.entries(data).forEach(([key, value]) => {
+        if (value !== undefined) {
+          updates[key] = value;
+        }
+      });
+      
+      const [config] = await db.update(sharepointConfigTable)
+        .set(updates)
+        .where(eq(sharepointConfigTable.id, id))
+        .returning();
+      return config;
+    },
+    
+    upsert: async (organizationId: number, data: Partial<Omit<InsertSharePointConfig, 'organizationId'>>): Promise<SharePointConfig> => {
+      const existing = await db.select().from(sharepointConfigTable)
+        .where(eq(sharepointConfigTable.organizationId, organizationId));
+      
+      if (existing.length > 0) {
+        const updates: Record<string, any> = { updatedAt: new Date() };
+        Object.entries(data).forEach(([key, value]) => {
+          if (value !== undefined) {
+            updates[key] = value;
+          }
+        });
+        
+        const [updated] = await db.update(sharepointConfigTable)
+          .set(updates)
+          .where(eq(sharepointConfigTable.organizationId, organizationId))
+          .returning();
+        return updated;
+      } else {
+        const [created] = await db.insert(sharepointConfigTable)
+          .values({ ...data, organizationId })
+          .returning();
+        return created;
+      }
     },
   };
 }

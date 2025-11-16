@@ -6,6 +6,8 @@ import { Card } from "@/components/ui/card";
 import { AlertCircle, ArrowLeft, Mic } from "lucide-react";
 import { Link } from "wouter";
 import { Button } from "@/components/ui/button";
+import { Checkbox } from "@/components/ui/checkbox";
+import { Label } from "@/components/ui/label";
 import VoiceFormModal from "@/components/VoiceFormModal";
 import { useToast } from "@/hooks/use-toast";
 import { apiRequest } from "@/lib/queryClient";
@@ -17,6 +19,7 @@ export default function FillForm() {
   const { toast } = useToast();
   const templateId = params?.id ? parseInt(params.id) : null;
   const [showVoiceModal, setShowVoiceModal] = useState(false);
+  const [syncToSharePoint, setSyncToSharePoint] = useState(true);
 
   const { data: template, isLoading, error } = useQuery<any>({
     queryKey: ['/api/form-templates', templateId],
@@ -96,9 +99,26 @@ export default function FillForm() {
       source: 'voice',
       formData: completeFormData,
       status: 'pending',
+      syncToSharePoint: template.type === 'incident-report' && syncToSharePoint,
     });
     
     setShowVoiceModal(false);
+  };
+
+  const handleFormSubmit = (formData: Record<string, any>) => {
+    // Generate unique form code
+    const formCode = `WEB-${template.type.toUpperCase()}-${Date.now()}`;
+    
+    // Submit to backend
+    submitFormMutation.mutate({
+      jobId: 1, // Default job for now - could be selected by user
+      formCode,
+      type: template.type,
+      source: 'web',
+      formData,
+      status: 'completed',
+      syncToSharePoint: template.type === 'incident-report' && syncToSharePoint,
+    });
   };
 
   return (
@@ -134,15 +154,35 @@ export default function FillForm() {
         </Button>
       </div>
 
+      {template.type === 'incident-report' && (
+        <Card className="p-4">
+          <div className="flex items-center space-x-2">
+            <Checkbox
+              id="sync-sharepoint"
+              checked={syncToSharePoint}
+              onCheckedChange={(checked) => setSyncToSharePoint(checked as boolean)}
+              data-testid="checkbox-sync-sharepoint"
+            />
+            <Label
+              htmlFor="sync-sharepoint"
+              className="text-sm font-medium leading-none peer-disabled:cursor-not-allowed peer-disabled:opacity-70 cursor-pointer"
+            >
+              Send to SharePoint
+            </Label>
+          </div>
+          <p className="text-xs text-muted-foreground mt-2 ml-6">
+            Automatically create a matching entry in your SharePoint incident list
+          </p>
+        </Card>
+      )}
+
       <DynamicFormRenderer 
         template={{
           ...template,
           description: template.description || ''
         }}
-        onSubmit={(data) => {
-          console.log('Form submitted:', data);
-          window.location.href = '/forms';
-        }}
+        onSubmit={handleFormSubmit}
+        isSubmitting={submitFormMutation.isPending}
       />
 
       <VoiceFormModal
