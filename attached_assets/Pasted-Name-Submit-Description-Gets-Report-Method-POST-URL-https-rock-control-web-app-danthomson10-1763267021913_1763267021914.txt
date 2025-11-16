@@ -1,0 +1,125 @@
+Name
+Submit
+Description
+Gets Report
+Method
+POST
+URL
+https://rock-control-web-app-danthomson10.replit.app/api/voice/forms/submit
+Response timeout (seconds)
+
+How long to wait for the client tool to respond before timing out. Default is 20 seconds.
+
+
+Disable interruptions
+Select this box to disable interruptions while the tool is running.
+
+Pre-tool speech
+
+Force agent speech before tool execution or let it decide automatically based on recent execution times.
+
+
+Auto
+Execution mode
+
+Determines when and how the tool executes relative to agent speech.
+
+
+Immediate
+Tool call sound
+
+Optional sound effect that plays during tool execution.
+
+
+None
+Authentication
+Workspace has no auth connections
+Headers
+
+Define headers that will be sent with the request
+
+Add header
+Path parameters
+
+Add path wrapped in curly braces to the URL to configure them here.
+
+Query parameters
+
+Define parameters that will be collected by the LLM and sent as the query of the request.
+
+Add param
+Body parameters
+
+Define parameters that will be collected by the LLM and sent as the body of the request.
+
+Description
+Submits Form
+This field will be passed to the LLM and should describe in detail how to extract the data from the transcript.
+
+Properties
+Data type
+
+object
+Identifier
+formdata
+
+Required
+Description
+"JSON object containing all the user's responses. Each key is a question ID and value is the user's answer."
+Properties
+Data type
+
+string
+Identifier
+responses
+
+Required
+Value Type
+
+LLM Prompt
+Description
+JSON string containing all form responses
+Enum Values (optional)
+Enter an enum value
+
+Add predefined values that the LLM can select from. If no values are provided, the LLM can use any string value.
+
+Delete
+Data type
+
+string
+Identifier
+caller_phone
+
+Required
+Value Type
+
+LLM Prompt
+Description
+Number
+Enum Values (optional)
+Enter an enum value
+
+Add predefined values that the LLM can select from. If no values are provided, the LLM can use any string value.
+
+Delete
+Add property
+Delete
+Data type
+
+string
+Identifier
+formtype
+
+Required
+Value Type
+
+LLM Prompt
+Description
+Form type being submitted
+Enum Values (optional)
+Enter an enum value
+
+Add predefined values that the LLM can select from. If no values are provided, the LLM can use any string value.
+
+Delete

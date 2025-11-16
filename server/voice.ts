@@ -5,6 +5,113 @@ import type { DatabaseStorage } from './storage';
 const VoiceResponse = twilio.twiml.VoiceResponse;
 
 export function setupVoiceRoutes(app: Router, storage: DatabaseStorage) {
+  // ElevenLabs Custom Tool: Get form questions
+  app.get('/api/voice/forms/:formType', async (req, res) => {
+    try {
+      const formType = req.params.formType;
+      
+      // Get all templates for organization 1 (default for voice calls)
+      const templates = await storage.formTemplates.getByOrganization(1, false);
+      const template = templates.find((t: any) => t.type === formType);
+      
+      if (!template) {
+        return res.status(404).json({ 
+          error: 'Form not found',
+          availableFormTypes: templates.map((t: any) => t.type)
+        });
+      }
+      
+      // Format response for ElevenLabs
+      const schema = template.schema as any;
+      const questions = schema.questions || [];
+      
+      res.json({
+        formType: template.type,
+        formName: template.name,
+        description: template.description,
+        questions: questions.map((q: any) => ({
+          id: q.id,
+          label: q.label,
+          type: q.fieldType,
+          required: q.required || false,
+          options: q.options || [],
+          helpText: q.helpText || '',
+        }))
+      });
+    } catch (error: any) {
+      console.error('Error fetching form for ElevenLabs:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ElevenLabs Custom Tool: Submit completed form
+  app.post('/api/voice/forms/submit', async (req, res) => {
+    try {
+      const { formtype, formdata, caller_phone } = req.body;
+      
+      console.log('📞 Voice form submission received:', { formtype, caller_phone });
+      
+      // Parse the responses JSON string
+      let responses;
+      try {
+        responses = typeof formdata.responses === 'string' 
+          ? JSON.parse(formdata.responses)
+          : formdata.responses;
+      } catch (parseError) {
+        return res.status(400).json({ 
+          error: 'Invalid responses format',
+          detail: 'responses must be a valid JSON string or object'
+        });
+      }
+      
+      // Generate unique form code
+      const formCode = `VOICE-${formtype.toUpperCase()}-${Date.now()}`;
+      
+      // Create form submission
+      const form = await storage.forms.create({
+        organizationId: 1,
+        jobId: 1, // Default job for voice submissions
+        formCode,
+        type: formtype,
+        formData: responses,
+        status: 'submitted',
+        submittedById: 1, // System user for voice submissions
+        submittedAt: new Date(),
+      });
+      
+      console.log('✅ Voice form saved:', formCode);
+      
+      // Send SMS confirmation
+      try {
+        const twilioClient = twilio(
+          process.env.TWILIO_ACCOUNT_SID,
+          process.env.TWILIO_AUTH_TOKEN
+        );
+        
+        await twilioClient.messages.create({
+          body: `✅ Your ${formCode} has been submitted successfully via Rock Control Voice. Thank you for keeping our sites safe!`,
+          from: process.env.TWILIO_PHONE_NUMBER,
+          to: caller_phone,
+        });
+        
+        console.log('📱 SMS confirmation sent to', caller_phone);
+      } catch (smsError) {
+        console.error('SMS error:', smsError);
+        // Don't fail the request if SMS fails
+      }
+      
+      res.json({ 
+        success: true,
+        formCode,
+        message: 'Form submitted successfully',
+        confirmationSent: true
+      });
+    } catch (error: any) {
+      console.error('Error saving voice form:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Webhook for incoming calls
   app.post('/api/voice/incoming-call', (req, res) => {
     const twiml = new VoiceResponse();
