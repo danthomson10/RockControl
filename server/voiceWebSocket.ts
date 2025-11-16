@@ -113,8 +113,9 @@ async function initializeElevenLabsConversation(
   console.log(`🤖 Connecting to ElevenLabs agent: ${ELEVENLABS_AGENT_ID}`);
   
   try {
-    // Connect to ElevenLabs Conversational AI WebSocket
-    const wsUrl = `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${ELEVENLABS_AGENT_ID}`;
+    // Connect to ElevenLabs Conversational AI WebSocket with Twilio-compatible audio format
+    // Using ulaw_8000 (μ-law, 8 kHz) which Twilio media streams expect
+    const wsUrl = `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${ELEVENLABS_AGENT_ID}&output_format=ulaw_8000`;
     
     session.elevenLabsWs = new WebSocket(wsUrl, {
       headers: {
@@ -125,14 +126,12 @@ async function initializeElevenLabsConversation(
     session.elevenLabsWs.on('open', () => {
       console.log('✅ ElevenLabs connection established');
       
-      // Send initial conversation context with audio format configuration
+      // Send initial conversation context
       session.elevenLabsWs?.send(JSON.stringify({
         type: 'conversation_initiation_client_data',
         conversation_initiation_client_data: {
           caller_phone: session.callerPhone,
           form_type: session.formType,
-          // Configure audio format to match Twilio (PCM 8kHz mulaw)
-          output_audio_format: 'pcm_8000',
         }
       }));
     });
