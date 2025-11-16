@@ -11,9 +11,9 @@ Rock Control now supports voice-based form completion using Twilio + ElevenLabs 
 
 ## Setup Instructions
 
-### 1. Configure Twilio Phone Number
+### 1. Configure Twilio Phone Number ✅ COMPLETED
 
-You've already provided your Twilio credentials. Now configure your phone number's voice webhooks:
+Your Twilio phone number **+6435672557** is already configured with the correct webhooks!
 
 **Option A: Via Twilio Console (Web UI)**
 
@@ -39,7 +39,7 @@ Replace `YOUR_PHONE_NUMBER` with your Twilio number (e.g., +1234567890)
 
 ### 2. Test the Integration
 
-1. Call your Twilio phone number from your mobile phone
+1. Call **+64 3 567 2557** from your mobile phone
 2. You should hear: *"Welcome to Rock Control. Please choose a form to complete..."*
 3. Say one of the following:
    - "Incident report" - for safety incidents

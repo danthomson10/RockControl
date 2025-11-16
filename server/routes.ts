@@ -36,13 +36,6 @@ export async function registerRoutes(app: Express) {
   // Setup authentication
   await setupAuth(app);
   
-  // Import and setup voice routes
-  const { setupVoiceRoutes } = await import('./voice');
-  setupVoiceRoutes(app, storage);
-  
-  // Return storage for WebSocket setup
-  return storage;
-  
   
   // Public auth routes (no authentication required)
   
@@ -1120,4 +1113,11 @@ export async function registerRoutes(app: Express) {
       res.status(500).json({ error: error.message });
     }
   });
+  
+  // Setup voice routes
+  const { setupVoiceRoutes } = await import('./voice');
+  setupVoiceRoutes(app, storage);
+  
+  // Return storage for WebSocket setup
+  return storage;
 }
