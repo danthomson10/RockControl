@@ -41,11 +41,15 @@ export function setupVoiceWebSocket(server: Server, storage: DatabaseStorage) {
 
         switch (msg.event) {
           case 'start':
+            // Get caller phone from Twilio's 'from' field (E.164 format)
+            const callerPhone = msg.start.from || msg.start.customParameters?.callerPhone || 'unknown';
+            const requestedFormType = msg.start.customParameters?.formType || '';
+            
             session = {
               streamSid: msg.streamSid,
               callSid: msg.start.callSid,
-              callerPhone: msg.start.customParameters?.callerPhone || 'unknown',
-              formType: msg.start.customParameters?.formType || '',
+              callerPhone,
+              formType: requestedFormType,
               templateId: parseInt(msg.start.customParameters?.templateId || '0'),
               twilioWs: ws,
               conversationState: {
@@ -55,18 +59,36 @@ export function setupVoiceWebSocket(server: Server, storage: DatabaseStorage) {
             };
             
             activeSessions.set(msg.streamSid, session);
-            console.log(`📞 Call started: ${session.callSid} from ${session.callerPhone}`);
+            console.log(`📞 Call started: ${session.callSid} from ${callerPhone}`);
             
             // Authorize caller by phone number
-            const phoneAuth = await storage.userPhoneNumbers.getByPhoneNumber(session.callerPhone);
+            const phoneAuth = await storage.userPhoneNumbers.getByPhoneNumber(callerPhone);
             if (!phoneAuth || !phoneAuth.verified || !phoneAuth.allowVoiceAccess) {
-              console.log(`❌ Unauthorized phone number: ${session.callerPhone}`);
+              console.log(`❌ Unauthorized phone number: ${callerPhone}`);
               ws.close();
               activeSessions.delete(msg.streamSid);
               return;
             }
             
-            console.log(`✅ Authorized caller: ${phoneAuth.user.name} (${phoneAuth.user.email})`);
+            // Check if user is active
+            if (!phoneAuth.user.active) {
+              console.log(`❌ Inactive user: ${phoneAuth.user.email}`);
+              ws.close();
+              activeSessions.delete(msg.streamSid);
+              return;
+            }
+            
+            // Check if caller is allowed to access requested form type
+            if (phoneAuth.allowedFormTypes && phoneAuth.allowedFormTypes.length > 0) {
+              if (requestedFormType && !phoneAuth.allowedFormTypes.includes(requestedFormType)) {
+                console.log(`❌ Form type '${requestedFormType}' not allowed for ${phoneAuth.user.email}`);
+                ws.close();
+                activeSessions.delete(msg.streamSid);
+                return;
+              }
+            }
+            
+            console.log(`✅ Authorized caller: ${phoneAuth.user.name} (${phoneAuth.user.email}, role: ${phoneAuth.user.role})`);
             
             // Initialize ElevenLabs conversation
             await initializeElevenLabsConversation(session, storage);

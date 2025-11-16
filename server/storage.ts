@@ -280,11 +280,16 @@ export class DatabaseStorage implements IStorage {
     },
     
     getByPhoneNumber: async (phoneNumber: string): Promise<(UserPhoneNumber & { user: User }) | undefined> => {
+      // Get most recent verified phone number record if multiple exist
       const result = await db
         .select()
         .from(userPhoneNumbers)
         .leftJoin(users, eq(userPhoneNumbers.userId, users.id))
-        .where(eq(userPhoneNumbers.phoneNumber, phoneNumber))
+        .where(and(
+          eq(userPhoneNumbers.phoneNumber, phoneNumber),
+          eq(userPhoneNumbers.verified, true)
+        ))
+        .orderBy(desc(userPhoneNumbers.verifiedAt))
         .limit(1);
       
       if (result.length === 0 || !result[0].users) {
