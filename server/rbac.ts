@@ -2,6 +2,7 @@ import type { Request, Response, NextFunction } from "express";
 import { storage } from "./storage";
 import type { User } from "@shared/schema";
 import { ROLE_CAPABILITIES, type UserRole, type Capability } from "@shared/rbac";
+import { normalizeRole } from "@shared/rbac-config";
 
 // Extend Express Request to include user
 declare global {
@@ -58,10 +59,12 @@ export function withAuth(isAuthenticated: any) {
 
 /**
  * Check if user has a specific capability
+ * Normalizes role casing to handle session-auth vs OAuth differences
  */
 export function hasCapability(user: User | undefined, capability: keyof typeof ROLE_CAPABILITIES[keyof typeof ROLE_CAPABILITIES]): boolean {
   if (!user) return false;
-  const roleCapabilities = ROLE_CAPABILITIES[user.role as keyof typeof ROLE_CAPABILITIES];
+  const normalizedRole = normalizeRole(user.role);
+  const roleCapabilities = ROLE_CAPABILITIES[normalizedRole as keyof typeof ROLE_CAPABILITIES];
   return roleCapabilities ? roleCapabilities[capability] : false;
 }
 
@@ -87,6 +90,7 @@ export function requireCapability(capability: keyof typeof ROLE_CAPABILITIES[key
 
 /**
  * Middleware factory to require one of several roles
+ * Normalizes role casing to handle session-auth vs OAuth differences
  */
 export function requireRoles(allowedRoles: Array<keyof typeof ROLE_CAPABILITIES>) {
   return (req: Request, res: Response, next: NextFunction) => {
@@ -94,10 +98,12 @@ export function requireRoles(allowedRoles: Array<keyof typeof ROLE_CAPABILITIES>
       return res.status(401).json({ error: "Authentication required" });
     }
 
-    if (!allowedRoles.includes(req.currentUser.role as any)) {
+    const normalizedRole = normalizeRole(req.currentUser.role);
+
+    if (!allowedRoles.includes(normalizedRole as any)) {
       return res.status(403).json({ 
         error: `Insufficient permissions. Required roles: ${allowedRoles.join(", ")}`,
-        userRole: req.currentUser.role,
+        userRole: normalizedRole,
       });
     }
 

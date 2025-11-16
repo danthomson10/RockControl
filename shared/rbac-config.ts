@@ -12,8 +12,31 @@ export const ROLE_TO_GROUP: Record<UserRole, RoleGroup> = {
   ClientViewer: 'Viewer',
 };
 
+/**
+ * Normalizes role strings to match UserRole enum
+ * Handles case-insensitive matching for session-auth vs OAuth differences
+ */
+export function normalizeRole(role: string): UserRole {
+  const roleLower = role.toLowerCase();
+  
+  // Map lowercase variants to canonical UserRole
+  const roleMap: Record<string, UserRole> = {
+    'orgadmin': 'OrgAdmin',
+    'projectmanager': 'ProjectManager',
+    'hsemanager': 'HSEManager',
+    'sitesupervisor': 'SiteSupervisor',
+    'fieldtech': 'FieldTech',
+    'subcontractor': 'Subcontractor',
+    'clientviewer': 'ClientViewer',
+  };
+  
+  return roleMap[roleLower] || role as UserRole;
+}
+
 export function getRoleGroup(role: UserRole): RoleGroup {
-  return ROLE_TO_GROUP[role] || 'Field';
+  // Normalize role to handle session-auth vs OAuth differences
+  const normalizedRole = normalizeRole(role);
+  return ROLE_TO_GROUP[normalizedRole] || 'Field';
 }
 
 export type DashboardWidget = 

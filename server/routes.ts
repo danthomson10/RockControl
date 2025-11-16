@@ -451,8 +451,8 @@ export async function registerRoutes(app: Express) {
     }
   });
   
-  // Comprehensive overview for admin users with canViewAll capability
-  app.get("/api/dashboard/overview", isAuthenticated, loadCurrentUser, requireCapability("canViewAll"), async (req: any, res) => {
+  // Comprehensive overview for management and supervisor users
+  app.get("/api/dashboard/overview", isAuthenticated, loadCurrentUser, requireRoles(["OrgAdmin", "ProjectManager", "HSEManager", "SiteSupervisor"]), async (req: any, res) => {
     try {
       const organizationId = req.currentUser!.organizationId;
       
