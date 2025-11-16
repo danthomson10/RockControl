@@ -188,7 +188,7 @@ export interface IStorage {
 export class DatabaseStorage implements IStorage {
   organizations = {
     create: async (data: InsertOrganization): Promise<Organization> => {
-      const [org] = await db.insert(organizations).values(data).returning();
+      const [org] = await db.insert(organizations).values(data as any).returning();
       return org;
     },
     
@@ -200,7 +200,7 @@ export class DatabaseStorage implements IStorage {
   
   users = {
     create: async (data: InsertUser): Promise<User> => {
-      const [user] = await db.insert(users).values(data).returning();
+      const [user] = await db.insert(users).values(data as any).returning();
       return user;
     },
     
@@ -276,7 +276,7 @@ export class DatabaseStorage implements IStorage {
   
   accessRequests = {
     create: async (data: InsertAccessRequest): Promise<AccessRequest> => {
-      const [request] = await db.insert(accessRequests).values(data).returning();
+      const [request] = await db.insert(accessRequests).values(data as any).returning();
       return request;
     },
     
@@ -307,7 +307,7 @@ export class DatabaseStorage implements IStorage {
   
   oauthConnections = {
     create: async (data: InsertOAuthConnection): Promise<OAuthConnection> => {
-      const [connection] = await db.insert(oauthConnections).values(data).returning();
+      const [connection] = await db.insert(oauthConnections).values(data as any).returning();
       return connection;
     },
     
@@ -328,7 +328,7 @@ export class DatabaseStorage implements IStorage {
   
   clients = {
     create: async (data: InsertClient): Promise<Client> => {
-      const [client] = await db.insert(clients).values(data).returning();
+      const [client] = await db.insert(clients).values(data as any).returning();
       return client;
     },
     
@@ -381,7 +381,7 @@ export class DatabaseStorage implements IStorage {
   
   sites = {
     create: async (data: InsertSite): Promise<Site> => {
-      const [site] = await db.insert(sites).values(data).returning();
+      const [site] = await db.insert(sites).values(data as any).returning();
       return site;
     },
     
@@ -491,7 +491,7 @@ export class DatabaseStorage implements IStorage {
   
   siteContacts = {
     create: async (data: InsertSiteContact): Promise<SiteContact> => {
-      const [contact] = await db.insert(siteContacts).values(data).returning();
+      const [contact] = await db.insert(siteContacts).values(data as any).returning();
       return contact;
     },
     
@@ -515,7 +515,7 @@ export class DatabaseStorage implements IStorage {
   
   siteFiles = {
     create: async (data: InsertSiteFile): Promise<SiteFile> => {
-      const [file] = await db.insert(siteFiles).values(data).returning();
+      const [file] = await db.insert(siteFiles).values(data as any).returning();
       return file;
     },
     
@@ -553,7 +553,7 @@ export class DatabaseStorage implements IStorage {
   
   jobs = {
     create: async (data: InsertJob): Promise<Job> => {
-      const [job] = await db.insert(jobs).values(data).returning();
+      const [job] = await db.insert(jobs).values(data as any).returning();
       return job;
     },
     
@@ -626,7 +626,7 @@ export class DatabaseStorage implements IStorage {
   
   jobMembers = {
     create: async (data: InsertJobMember): Promise<JobMember> => {
-      const [member] = await db.insert(jobMembers).values(data).returning();
+      const [member] = await db.insert(jobMembers).values(data as any).returning();
       return member;
     },
     
@@ -637,7 +637,7 @@ export class DatabaseStorage implements IStorage {
   
   forms = {
     create: async (data: InsertForm): Promise<Form> => {
-      const [form] = await db.insert(forms).values(data).returning();
+      const [form] = await db.insert(forms).values(data as any).returning();
       return form;
     },
     
@@ -715,7 +715,7 @@ export class DatabaseStorage implements IStorage {
   
   formTemplates = {
     create: async (data: InsertFormTemplate): Promise<FormTemplate> => {
-      const [template] = await db.insert(formTemplates).values(data).returning();
+      const [template] = await db.insert(formTemplates).values(data as any).returning();
       return template;
     },
     
@@ -746,7 +746,7 @@ export class DatabaseStorage implements IStorage {
       return db.select().from(formTemplates)
         .where(and(
           eq(formTemplates.organizationId, organizationId),
-          eq(formTemplates.type, type),
+          eq(formTemplates.type, type as any),
           eq(formTemplates.active, true)
         ))
         .orderBy(desc(formTemplates.createdAt));
@@ -777,7 +777,7 @@ export class DatabaseStorage implements IStorage {
   
   incidents = {
     create: async (data: InsertIncident): Promise<Incident> => {
-      const [incident] = await db.insert(incidents).values(data).returning();
+      const [incident] = await db.insert(incidents).values(data as any).returning();
       return incident;
     },
     
@@ -855,7 +855,7 @@ export class DatabaseStorage implements IStorage {
   
   sharepointConfig = {
     create: async (data: InsertSharePointConfig): Promise<SharePointConfig> => {
-      const [config] = await db.insert(sharepointConfigTable).values(data).returning();
+      const [config] = await db.insert(sharepointConfigTable).values(data as any).returning();
       return config;
     },
     
@@ -905,7 +905,7 @@ export class DatabaseStorage implements IStorage {
         return updated;
       } else {
         const [created] = await db.insert(sharepointConfigTable)
-          .values({ ...data, organizationId })
+          .values({ ...data, organizationId } as any)
           .returning();
         return created;
       }

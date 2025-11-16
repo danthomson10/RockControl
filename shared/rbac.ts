@@ -12,6 +12,7 @@ export type Capability =
   | 'canManageForms'
   | 'canManageIncidents'
   | 'canManageUsers'
+  | 'canManageIntegrations'
   | 'canViewAll';
 
 export const ROLE_CAPABILITIES: Record<UserRole, Record<Capability, boolean>> = {
@@ -20,6 +21,7 @@ export const ROLE_CAPABILITIES: Record<UserRole, Record<Capability, boolean>> = 
     canManageForms: true,
     canManageIncidents: true,
     canManageUsers: true,
+    canManageIntegrations: true,
     canViewAll: true,
   },
   ProjectManager: {
@@ -27,6 +29,7 @@ export const ROLE_CAPABILITIES: Record<UserRole, Record<Capability, boolean>> = 
     canManageForms: true,
     canManageIncidents: true,
     canManageUsers: false,
+    canManageIntegrations: false,
     canViewAll: true,
   },
   HSEManager: {
@@ -34,6 +37,7 @@ export const ROLE_CAPABILITIES: Record<UserRole, Record<Capability, boolean>> = 
     canManageForms: true,
     canManageIncidents: true,
     canManageUsers: false,
+    canManageIntegrations: false,
     canViewAll: true,
   },
   SiteSupervisor: {
@@ -41,6 +45,7 @@ export const ROLE_CAPABILITIES: Record<UserRole, Record<Capability, boolean>> = 
     canManageForms: true,
     canManageIncidents: true,
     canManageUsers: false,
+    canManageIntegrations: false,
     canViewAll: true,
   },
   FieldTech: {
@@ -48,6 +53,7 @@ export const ROLE_CAPABILITIES: Record<UserRole, Record<Capability, boolean>> = 
     canManageForms: true,
     canManageIncidents: true,
     canManageUsers: false,
+    canManageIntegrations: false,
     canViewAll: false,
   },
   ClientViewer: {
@@ -55,6 +61,7 @@ export const ROLE_CAPABILITIES: Record<UserRole, Record<Capability, boolean>> = 
     canManageForms: false,
     canManageIncidents: false,
     canManageUsers: false,
+    canManageIntegrations: false,
     canViewAll: true,
   },
   Subcontractor: {
@@ -62,6 +69,7 @@ export const ROLE_CAPABILITIES: Record<UserRole, Record<Capability, boolean>> = 
     canManageForms: true,
     canManageIncidents: true,
     canManageUsers: false,
+    canManageIntegrations: false,
     canViewAll: false,
   },
 } as const;

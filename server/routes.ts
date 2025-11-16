@@ -26,7 +26,7 @@ const oauthStateStore = new Map<string, { nonce: string; codeVerifier: string; s
 setInterval(() => {
   const now = Date.now();
   const tenMinutes = 10 * 60 * 1000;
-  for (const [key, value] of oauthStateStore.entries()) {
+  for (const [key, value] of Array.from(oauthStateStore.entries())) {
     if (now - value.createdAt > tenMinutes) {
       oauthStateStore.delete(key);
     }
@@ -567,10 +567,9 @@ export async function registerRoutes(app: Express) {
       
       // Enforce tenant isolation - override organizationId and submittedById
       const form = await storage.forms.create({ 
-        ...data, 
-        organizationId,
+        ...data,
         submittedById: user.id 
-      });
+      } as any);
       
       // SharePoint integration for incident reports
       if (syncToSharePoint && form.type === 'incident-report') {
@@ -683,10 +682,9 @@ export async function registerRoutes(app: Express) {
       
       // Enforce tenant isolation - override organizationId and createdById
       const template = await storage.formTemplates.create({ 
-        ...data, 
-        organizationId,
+        ...data,
         createdById: user.id 
-      });
+      } as any);
       res.status(201).json(template);
     } catch (error: any) {
       if (error instanceof z.ZodError) {
