@@ -63,11 +63,19 @@ export function setupVoiceWebSocket(server: Server, storage: DatabaseStorage) {
 
           case 'media':
             if (session?.elevenLabsWs && session.elevenLabsWs.readyState === WebSocket.OPEN) {
-              // Forward audio from Twilio to ElevenLabs using explicit message type
-              // Twilio sends base64-encoded μ-law audio in msg.media.payload
+              // Forward audio from Twilio to ElevenLabs using the schema the
+              // Conversational AI websocket expects. The API recently changed
+              // from accepting a raw "user_audio_chunk" payload to requiring a
+              // typed message with an audio_event payload that contains
+              // `audio_base_64`. Sending the legacy payload results in the
+              // "Invalid message received" 1008 close code we see in the logs.
+              const audioPayload = msg.media.payload;
               session.elevenLabsWs.send(JSON.stringify({
+                user_audio_chunk: audioPayload,
                 type: 'user_audio_chunk',
-                user_audio_chunk: msg.media.payload,
+                audio_event: {
+                  audio_base_64: audioPayload,
+                },
               }));
             }
             break;
@@ -102,38 +110,6 @@ export function setupVoiceWebSocket(server: Server, storage: DatabaseStorage) {
   console.log('🎙️ Voice WebSocket server initialized');
 }
 
-/**
- * Normalize audio payload from ElevenLabs response
- * Handles multiple format variations:
- * - Legacy: message.audio_base64
- * - Current: message.audio_base_64
- * - Newer: message.audio_event.audio_base_64
- * - Object format: message.audio (for backward compatibility)
- */
-function extractAudioPayload(message: any): string | null {
-  // Check newer nested format first
-  if (message.audio_event?.audio_base_64) {
-    return message.audio_event.audio_base_64;
-  }
-  
-  // Check current format with underscore
-  if (message.audio_base_64) {
-    return message.audio_base_64;
-  }
-  
-  // Check legacy format without underscore
-  if (message.audio_base64) {
-    return message.audio_base64;
-  }
-  
-  // Check object format (backward compatibility)
-  if (message.audio) {
-    return message.audio;
-  }
-  
-  return null;
-}
-
 async function initializeElevenLabsConversation(
   session: CallSession,
   storage: DatabaseStorage
@@ -163,7 +139,15 @@ async function initializeElevenLabsConversation(
 
     session.elevenLabsWs.on('open', () => {
       console.log('✅ ElevenLabs connection established');
-      // Connection is ready - ElevenLabs will start the conversation
+      
+      // Send initial conversation context
+      session.elevenLabsWs?.send(JSON.stringify({
+        type: 'conversation_initiation_client_data',
+        conversation_initiation_client_data: {
+          caller_phone: session.callerPhone,
+          form_type: session.formType,
+        }
+      }));
     });
 
     session.elevenLabsWs.on('message', (data: Buffer) => {
@@ -177,23 +161,30 @@ async function initializeElevenLabsConversation(
         
         // Handle different message types from ElevenLabs
         switch (message.type) {
-          case 'audio':
-            // Forward audio from ElevenLabs back to Twilio
-            // Use normalization function to handle all audio format variations
-            const audioData = extractAudioPayload(message);
-            if (audioData && session.twilioWs?.readyState === WebSocket.OPEN) {
-              console.log(`🔊 Sending audio to Twilio – length: ${audioData.length}`);
+          case 'audio': {
+            // Forward audio from ElevenLabs back to Twilio. ElevenLabs can
+            // return audio in different shapes (legacy `audio_base64` or the
+            // newer `audio_event.audio_base_64`), so normalise before
+            // forwarding it to Twilio.
+            const audioBase64 =
+              message.audio_base64 ||
+              message.audio_base_64 ||
+              message.audio_event?.audio_base_64;
+
+            if (audioBase64 && session.twilioWs?.readyState === WebSocket.OPEN) {
+              console.log(`🔊 Sending audio to Twilio – length: ${audioBase64.length}`);
               session.twilioWs.send(JSON.stringify({
                 event: 'media',
                 streamSid: session.streamSid,
                 media: {
-                  payload: audioData,
+                  payload: audioBase64,
                 },
               }));
-            } else if (!audioData) {
-              console.warn('⚠️ Audio message received but no audio data found:', JSON.stringify(message, null, 2));
+            } else if (!audioBase64) {
+              console.warn('⚠️ Audio message received but no audio data found:', message);
             }
             break;
+          }
             
           case 'transcript':
             // Capture transcript for the session
@@ -233,6 +224,10 @@ async function initializeElevenLabsConversation(
             session.elevenLabsWs?.send(JSON.stringify({ type: 'pong' }));
             break;
             
+          case 'conversation_initiation_metadata':
+            console.log('🆔 ElevenLabs conversation metadata received:', message.conversation_initiation_metadata_event);
+            break;
+
           default:
             // Log unknown message types to help with debugging
             console.log('❓ Unknown ElevenLabs message type:', message.type);

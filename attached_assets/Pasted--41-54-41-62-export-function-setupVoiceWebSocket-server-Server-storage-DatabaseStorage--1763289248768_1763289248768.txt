@@ -1,0 +1,190 @@
+@@ -41,54 +41,62 @@ export function setupVoiceWebSocket(server: Server, storage: DatabaseStorage) {
+
+        switch (msg.event) {
+          case 'start':
+            session = {
+              streamSid: msg.streamSid,
+              callSid: msg.start.callSid,
+              callerPhone: msg.start.customParameters?.callerPhone || 'unknown',
+              formType: msg.start.customParameters?.formType || '',
+              templateId: parseInt(msg.start.customParameters?.templateId || '0'),
+              twilioWs: ws,
+              conversationState: {
+                currentQuestionIndex: 0,
+                responses: {},
+              },
+            };
+            
+            activeSessions.set(msg.streamSid, session);
+            console.log(`📞 Call started: ${session.callSid}`);
+            
+            // Initialize ElevenLabs conversation
+            await initializeElevenLabsConversation(session, storage);
+            break;
+
+          case 'media':
+            if (session?.elevenLabsWs && session.elevenLabsWs.readyState === WebSocket.OPEN) {
+              // Forward audio from Twilio to ElevenLabs
+              // Forward audio from Twilio to ElevenLabs using the schema the
+              // Conversational AI websocket expects. The API recently changed
+              // from accepting a raw "user_audio_chunk" payload to requiring a
+              // typed message with an audio_event payload that contains
+              // `audio_base_64`. Sending the legacy payload results in the
+              // "Invalid message received" 1008 close code we see in the logs.
+              const audioPayload = msg.media.payload;
+              session.elevenLabsWs.send(JSON.stringify({
+                user_audio_chunk: audioPayload,
+                type: 'user_audio_chunk',
+                audio_event: {
+                  audio_base_64: audioPayload,
+                },
+              }));
+            }
+            break;
+
+          case 'stop':
+            console.log(`📞 Call ended: ${msg.streamSid}`);
+            if (session?.elevenLabsWs) {
+              session.elevenLabsWs.close();
+            }
+            activeSessions.delete(msg.streamSid);
+            break;
+        }
+      } catch (error) {
+        console.error('WebSocket message error:', error);
+      }
+    });
+
+    ws.on('close', (code, reason) => {
+      console.log(`📞 Twilio connection closed - Code: ${code}, Reason: ${reason.toString()}`);
+      if (code === 1006 || code === 1011) {
+        console.error(`⚠️ Twilio close code ${code} - likely audio format mismatch!`);
+      }
+      if (session) {
+        if (session.elevenLabsWs) {
+          session.elevenLabsWs.close();
+@@ -130,104 +138,117 @@ async function initializeElevenLabsConversation(
+
+    session.elevenLabsWs.on('open', () => {
+      console.log('✅ ElevenLabs connection established');
+      
+      // Send initial conversation context
+      session.elevenLabsWs?.send(JSON.stringify({
+        type: 'conversation_initiation_client_data',
+        conversation_initiation_client_data: {
+          caller_phone: session.callerPhone,
+          form_type: session.formType,
+        }
+      }));
+    });
+
+    session.elevenLabsWs.on('message', (data: Buffer) => {
+      try {
+        const message = JSON.parse(data.toString());
+        
+        // Log all message types for debugging
+        if (message.type !== 'audio' && message.type !== 'ping') {
+          console.log('📨 ElevenLabs message:', message.type, message);
+        }
+        
+        // Handle different message types from ElevenLabs
+        switch (message.type) {
+          case 'audio':
+            // Forward audio from ElevenLabs back to Twilio
+            if (message.audio_base64 && session.twilioWs?.readyState === WebSocket.OPEN) {
+              console.log(`🔊 Sending audio to Twilio – length: ${message.audio_base64.length}`);
+          case 'audio': {
+            // Forward audio from ElevenLabs back to Twilio. ElevenLabs can
+            // return audio in different shapes (legacy `audio_base64` or the
+            // newer `audio_event.audio_base_64`), so normalise before
+            // forwarding it to Twilio.
+            const audioBase64 =
+              message.audio_base64 ||
+              message.audio_base_64 ||
+              message.audio_event?.audio_base_64;
+
+            if (audioBase64 && session.twilioWs?.readyState === WebSocket.OPEN) {
+              console.log(`🔊 Sending audio to Twilio – length: ${audioBase64.length}`);
+              session.twilioWs.send(JSON.stringify({
+                event: 'media',
+                streamSid: session.streamSid,
+                media: {
+                  payload: message.audio_base64,
+                  payload: audioBase64,
+                },
+              }));
+            } else if (!message.audio_base64) {
+              console.warn('⚠️ Audio message received but no audio_base64 field found');
+            } else if (!audioBase64) {
+              console.warn('⚠️ Audio message received but no audio data found:', message);
+            }
+            break;
+          }
+            
+          case 'transcript':
+            // Capture transcript for the session
+            console.log('📝 Transcript:', message.transcript);
+            if (!session.conversationState.transcript) {
+              session.conversationState.transcript = [];
+            }
+            session.conversationState.transcript.push(message.transcript);
+            break;
+            
+          case 'tool_call':
+            // ElevenLabs is calling our API tools (e.g., form submission)
+            console.log('🔧 Tool call:', message.tool_name, message.parameters);
+            break;
+            
+          case 'agent_response':
+            // AI agent's text response (before it's converted to speech)
+            const agentText = message.agent_response_event?.agent_response || message.response;
+            console.log('💬 Agent says:', agentText);
+            break;
+            
+          case 'user_transcript':
+            // User's spoken words transcribed
+            console.log('🎤 User said:', message.user_transcript);
+            if (!session.conversationState.userTranscript) {
+              session.conversationState.userTranscript = [];
+            }
+            session.conversationState.userTranscript.push(message.user_transcript);
+            break;
+            
+          case 'interruption':
+            console.log('🔇 User interrupted');
+            break;
+            
+          case 'ping':
+            // Respond to keep-alive
+            session.elevenLabsWs?.send(JSON.stringify({ type: 'pong' }));
+            break;
+            
+          case 'conversation_initiation_metadata':
+            console.log('🆔 ElevenLabs conversation metadata received:', message.conversation_initiation_metadata_event);
+            break;
+
+          default:
+            // Log unknown message types to help with debugging
+            console.log('❓ Unknown ElevenLabs message type:', message.type);
+        }
+      } catch (error) {
+        console.error('Error parsing ElevenLabs message:', error);
+      }
+    });
+
+    session.elevenLabsWs.on('error', (error) => {
+      console.error('❌ ElevenLabs WebSocket error:', error);
+      console.error('❌ Error details:', JSON.stringify(error, null, 2));
+    });
+
+    session.elevenLabsWs.on('close', (code, reason) => {
+      console.log(`🔌 ElevenLabs connection closed - Code: ${code}, Reason: ${reason.toString()}`);
+      if (code !== 1000) {
+        console.error(`⚠️ Abnormal close code: ${code}`);
+      }
+    });
+    
+  } catch (error) {
+    console.error('❌ Failed to connect to ElevenLabs:', error);
+  }
+}
