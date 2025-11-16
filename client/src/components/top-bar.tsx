@@ -28,7 +28,8 @@ export function TopBar() {
     <header className="sticky top-0 z-50 flex h-14 sm:h-16 items-center gap-2 sm:gap-4 border-b bg-background px-3 sm:px-4">
       <SidebarTrigger data-testid="button-sidebar-toggle" />
       
-      <DropdownMenu>
+      {/* Tenant Switcher - Hidden for now */}
+      {/* <DropdownMenu>
         <DropdownMenuTrigger asChild>
           <Button variant="ghost" className="gap-2 hidden sm:flex" data-testid="button-tenant-switcher">
             <span className="font-semibold">Acme Construction</span>
@@ -42,7 +43,7 @@ export function TopBar() {
           <DropdownMenuItem data-testid="tenant-builders">Elite Builders Ltd</DropdownMenuItem>
           <DropdownMenuItem data-testid="tenant-infrastructure">Infrastructure Co</DropdownMenuItem>
         </DropdownMenuContent>
-      </DropdownMenu>
+      </DropdownMenu> */}
 
       <Button variant="ghost" size="icon" className="sm:hidden" data-testid="button-mobile-search">
         <Search className="h-5 w-5" />
