@@ -1,0 +1,63 @@
+Do a Deep Dive - review twilio and eleven lab settings - look for possible errors : figure out why agent_8401k9xb1dypexrtqt8n6g8zmtga isbt able to talk back -   1. Confirm what you’re actually sending back to Twilio
+
+In your WS handler you probably have something roughly like:
+
+// FROM ElevenLabs → TO Twilio
+elevenlabs.on("audio_chunk", (chunkBase64: string) => {
+  twilioSocket.send(
+    JSON.stringify({
+      event: "media",
+      media: { payload: chunkBase64 },   // message.audio_base64
+    })
+  );
+});
+
+
+With your rollback, just make sure:
+
+You’re not double-encoding (no Buffer.from(...).toString('base64') on something that’s already base64).
+
+You’re sending back raw audio bytes in base64 – nothing wrapped in JSON or other structures.
+
+Add a log:
+
+console.log("Sending audio to Twilio – length:", chunkBase64.length);
+
+
+If Twilio disconnects with close codes like 1006 / 1011 after audio, that often means “format mismatch”.
+
+2. Give ElevenLabs the right output format (best path)
+
+If you’re using a Realtime / Native Audio WS URL from ElevenLabs, adjust it to request telephony-friendly output:
+
+const elevenLabsWs = new WebSocket(
+  `wss://api.elevenlabs.io/v1/convai/stream?agent_id=${AGENT_ID}&output_format=ulaw_8000`,
+  {
+    headers: { "xi-api-key": process.env.ELEVEN_API_KEY! },
+  }
+);
+
+
+Key bit is output_format=ulaw_8000 (or similar option they expose for 8kHz telephony). That tells ElevenLabs to send you mu-law 8000 Hz, which Twilio likes.
+
+Rollback of your code is fine – just make sure the ElevenLabs WS URL now has that output_format query param.
+
+3. If output_format on the agent WS isn’t honored
+
+If ElevenLabs still sends 16kHz PCM:
+
+You’ve done the right simplification (just using message.audio_base64), but:
+
+You’ll still need either:
+
+Their built-in Twilio phone→Agent integration (no media streaming code needed), or
+
+A small audio resampler (16kHz PCM → 8kHz μ-law) in your WS code.
+
+Rollback doesn’t hurt anything, it just gets us back to a clean baseline where:
+
+Twilio connects
+
+Messages flow
+
+Logs are readable
