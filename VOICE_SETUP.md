@@ -1,41 +1,42 @@
 # Voice Form Filling Setup Guide
 
-Rock Control now supports voice-based form completion using Twilio + ElevenLabs integration. Workers can call a phone number and complete safety forms using natural conversation.
+Rock Control supports voice-based form completion where workers call **+64 3 567 2557** and an AI assistant guides them through safety forms using natural conversation.
+
+## Architecture
+
+**Twilio → ElevenLabs Streaming**
+
+1. Worker calls +64 3 567 2557 (Twilio number)
+2. Twilio webhook returns TwiML with `<Connect><Stream>` 
+3. Audio streams bidirectionally to ElevenLabs Conversational AI WebSocket
+4. ElevenLabs AI uses custom tools to fetch forms and submit responses
+5. Form saved to Rock Control database
 
 ## Features
 
-✅ Call a phone number to fill out forms via voice
-✅ AI-powered conversation guides users through form questions
-✅ SMS confirmation sent after successful submission
-✅ Supports all form types: Incident Reports, Take-5, Crew Briefings, etc.
+✅ Call a phone number to fill out forms via voice  
+✅ AI-powered conversation guides users through form questions  
+✅ Real-time audio streaming between Twilio and ElevenLabs  
+✅ Supports all form types: Incident Reports, Take-5, Crew Briefings, etc.  
+✅ Automatic form submission to database  
 
 ## Setup Instructions
 
-### 1. Configure Twilio Phone Number ✅ COMPLETED
+### 1. Configure Twilio TwiML App
 
-Your Twilio phone number **+6435672557** is already configured with the correct webhooks!
+Your Twilio number **+6435672557** must use the **"ElevenLabs Stream"** TwiML App:
 
-**Option A: Via Twilio Console (Web UI)**
+**Via Twilio Console:**
 
-1. Go to [Twilio Console → Phone Numbers → Manage → Active Numbers](https://console.twilio.com/us1/develop/phone-numbers/manage/incoming)
-2. Click on your phone number
-3. Scroll to **Voice Configuration**
-4. Set the following:
-   - **Configure With:** Webhook
-   - **A CALL COMES IN:**
-     - **Webhook URL:** `https://rockcontrol.app/api/voice/incoming-call`
-     - **HTTP Method:** POST
-5. Click **Save Configuration**
-
-**Option B: Via Twilio CLI (Terminal)**
-
-```bash
-twilio phone-numbers:update YOUR_PHONE_NUMBER \
-  --voice-url https://rockcontrol.app/api/voice/incoming-call \
-  --voice-method POST
-```
-
-Replace `YOUR_PHONE_NUMBER` with your Twilio number (e.g., +1234567890)
+1. Go to [Twilio Console → Voice → TwiML Apps](https://console.twilio.com/us1/develop/voice/manage/twiml-apps)
+2. Find or create **"ElevenLabs Stream"** TwiML App
+3. Set **Voice Request URL:** `https://rockcontrol.app/api/voice/incoming-call`
+4. Set **HTTP Method:** POST
+5. Save the TwiML App
+6. Go to [Phone Numbers → Active Numbers](https://console.twilio.com/us1/develop/phone-numbers/manage/incoming)
+7. Click **+6435672557**
+8. Under **Voice Configuration**, select **TwiML App: ElevenLabs Stream**
+9. Save configuration
 
 ### 2. Configure ElevenLabs Custom Tools
 
@@ -129,8 +130,7 @@ Rock Control provides two custom API tools that ElevenLabs uses to fetch forms a
 {
   "success": true,
   "formCode": "VOICE-INCIDENT-REPORT-1731772800000",
-  "message": "Form submitted successfully",
-  "confirmationSent": true
+  "message": "Form submitted successfully"
 }
 ```
 
@@ -199,47 +199,53 @@ Rock Control provides webhook endpoints that ElevenLabs calls during the convers
 ### 4. Test the Integration
 
 1. Call **+64 3 567 2557** from your mobile phone
-2. You should hear: *"Welcome to Rock Control. Please choose a form to complete..."*
-3. Say one of the following:
+2. The ElevenLabs AI assistant will greet you
+3. Tell the AI which form you want to complete:
    - "Incident report" - for safety incidents
    - "Take five" - for pre-work safety checks
    - "Variation" - for project variations
    - "Crew briefing" - for daily briefings
-
-4. The system will guide you through the form questions
-5. After completion, you'll receive an SMS confirmation
+4. The AI will guide you through the form questions
+5. Your responses are automatically saved to the database
 
 ## How It Works
 
 ```
 ┌─────────────┐      ┌──────────┐      ┌─────────────┐      ┌──────────────┐
 │   Worker    │──────│  Twilio  │──────│ Rock Control│──────│  ElevenLabs  │
-│ (Phone Call)│      │  Voice   │      │   Server    │      │  AI Voice    │
+│ (Phone Call)│      │  Number  │      │   Server    │      │  AI Agent    │
 └─────────────┘      └──────────┘      └─────────────┘      └──────────────┘
        │                    │                   │                     │
-       │   1. Call Number   │                   │                     │
+       │   1. Dial Number   │                   │                     │
        ├───────────────────►│                   │                     │
-       │                    │  2. Webhook       │                     │
+       │                    │  2. POST Webhook  │                     │
        │                    ├──────────────────►│                     │
-       │                    │  3. TwiML         │                     │
+       │                    │  3. TwiML Stream  │                     │
        │                    │◄──────────────────┤                     │
-       │  4. Voice Prompt   │                   │                     │
-       │◄───────────────────┤                   │                     │
-       │  5. Say "Incident" │                   │                     │
-       ├───────────────────►│  6. Speech Text   │                     │
-       │                    ├──────────────────►│  7. Get Questions   │
-       │                    │                   ├────────────────────►│
-       │                    │  8. WebSocket     │  9. AI Responses    │
-       │                    │◄─────────────────►│◄───────────────────►│
-       │  10. AI Questions  │                   │                     │
-       │◄───────────────────┤                   │                     │
-       │  11. Worker Answers│                   │                     │
-       ├───────────────────►│                   │                     │
-       │                    │ 12. Save Form     │                     │
-       │                    │  ─────────────────►│                     │
        │                    │                   │                     │
-       │  13. SMS Receipt   │                   │                     │
-       │◄───────────────────┤                   │                     │
+       │                    │  4. WebSocket Stream to ElevenLabs      │
+       │                    │◄─────────────────────────────────────────┤
+       │                    │                   │                     │
+       │  5. AI Greeting    │                   │                     │
+       │◄───────────────────┤◄──────────────────┤◄────────────────────┤
+       │                    │                   │                     │
+       │  6. Say Form Type  │                   │                     │
+       ├───────────────────►├──────────────────►├────────────────────►│
+       │                    │                   │  7. GET /forms/:type│
+       │                    │                   │◄────────────────────┤
+       │                    │                   │  8. Form Questions  │
+       │                    │                   ├────────────────────►│
+       │                    │                   │                     │
+       │  9. AI Asks Q's    │                   │                     │
+       │◄───────────────────┤◄──────────────────┤◄────────────────────┤
+       │  10. Answers       │                   │                     │
+       ├───────────────────►├──────────────────►├────────────────────►│
+       │                    │                   │ 11. POST /submit    │
+       │                    │                   │◄────────────────────┤
+       │                    │                   │ 12. Save to DB      │
+       │                    │                   │                     │
+       │  13. Confirmation  │                   │                     │
+       │◄───────────────────┤◄──────────────────┤◄────────────────────┤
 ```
 
 ## API Endpoints
@@ -255,39 +261,40 @@ Rock Control provides webhook endpoints that ElevenLabs calls during the convers
 - `POST /api/elevenlabs/conversation-start` - Provides initial context when call begins
 - `POST /api/elevenlabs/conversation-end` - Receives transcript and metadata when call ends
 
-### WebSocket
-- `wss://[your-domain]/api/voice/media-stream` - Real-time audio streaming between Twilio and ElevenLabs
-
 ## Environment Variables
 
-The following secrets are already configured in Replit:
+The following secrets are configured in Replit:
 
 - `TWILIO_ACCOUNT_SID` - Your Twilio Account SID
 - `TWILIO_AUTH_TOKEN` - Your Twilio Auth Token  
-- `TWILIO_PHONE_NUMBER` - Your Twilio phone number
+- `TWILIO_PHONE_NUMBER` - Your Twilio phone number (+6435672557)
 - `ELEVENLABS_API_KEY` - Your ElevenLabs API key
+- `ELEVENLABS_AGENT_ID` - Your ElevenLabs agent ID (agent_8401k9xb1dypexrtqt8n6g8zmtga)
 
 ## Troubleshooting
 
 ### Call Doesn't Connect
-- Verify webhook URL is set correctly in Twilio Console
+- Verify TwiML App "ElevenLabs Stream" is assigned to +6435672557
+- Check that webhook URL is `https://rockcontrol.app/api/voice/incoming-call`
 - Ensure it's HTTPS (not HTTP)
 - Check that the application is running
 
-### No Voice Response
-- Check workflow logs in Replit
-- Verify Twilio credentials are correct
-- Make sure phone number is configured for voice
+### No AI Response
+- Check workflow logs in Replit for errors
+- Verify `ELEVENLABS_API_KEY` is set correctly
+- Verify `ELEVENLABS_AGENT_ID` is set correctly
+- Check ElevenLabs dashboard for agent status
 
-### SMS Not Sending
-- Verify `TWILIO_PHONE_NUMBER` is correct
-- Check Twilio Console for messaging errors
-- Ensure SMS is enabled for your Twilio number
+### Audio Quality Issues
+- Check network connectivity
+- Verify Twilio number supports voice streaming
+- Check ElevenLabs service status
 
 ### Form Not Saving
 - Check application logs for errors
 - Verify database is connected
-- Ensure user exists in system
+- Check that custom tools are configured in ElevenLabs dashboard
+- Verify tool URLs are correct (https://rockcontrol.app/api/voice/...)
 
 ## Next Steps
 
