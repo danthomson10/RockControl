@@ -179,7 +179,8 @@ async function initializeElevenLabsConversation(
         switch (message.type) {
           case 'audio':
             // Forward audio from ElevenLabs back to Twilio
-            const audioData = message.audio;
+            // Use normalization function to handle all audio format variations
+            const audioData = extractAudioPayload(message);
             if (audioData && session.twilioWs?.readyState === WebSocket.OPEN) {
               console.log(`🔊 Sending audio to Twilio – length: ${audioData.length}`);
               session.twilioWs.send(JSON.stringify({
