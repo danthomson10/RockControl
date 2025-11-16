@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { insertClientSchema, insertSiteSchema, insertSiteContactSchema, insertSiteFileSchema, insertJobSchema, insertFormSchema, insertFormTemplateSchema, insertIncidentSchema, insertAccessRequestSchema, updateProfileSchema } from "@shared/schema";
+import { insertClientSchema, insertSiteSchema, insertSiteContactSchema, insertSiteFileSchema, insertJobSchema, insertFormSchema, insertFormTemplateSchema, insertIncidentSchema, insertAccessRequestSchema, updateProfileSchema, jobs, sites, forms, incidents } from "@shared/schema";
 import { 
   registerSchema, 
   loginSchema, 
@@ -18,6 +18,8 @@ import { loadCurrentUser, requireCapability, requireRoles, withAuth } from "./rb
 import cryptoRandomString from "crypto-random-string";
 import { sendAccessRequestNotification, sendAccessRequestApproved } from "./email";
 import { sharepointService } from "./sharepoint-service";
+import { db } from "./db";
+import { eq, and, ilike, or } from "drizzle-orm";
 
 // Store OAuth state/nonce temporarily (in production, use Redis or session store)
 const oauthStateStore = new Map<string, { nonce: string; codeVerifier: string; state: string; createdAt: number }>();
@@ -32,6 +34,16 @@ setInterval(() => {
     }
   }
 }, 10 * 60 * 1000);
+
+// Form type mapping for search display
+const FORM_TYPE_LABELS: Record<string, string> = {
+  'take-5': 'Take 5',
+  'crew-briefing': 'Crew Briefing',
+  'risk-control-plan': 'Risk Control Plan',
+  'permit-to-work': 'Permit to Work',
+  'incident-report': 'Incident Report',
+  'variation': 'Variation',
+};
 
 export async function registerRoutes(app: Express) {
   // Health check endpoint (must be first, before auth)
@@ -677,6 +689,162 @@ export async function registerRoutes(app: Express) {
       res.status(500).json({ error: error.message });
     }
   });
+  
+  // ====== Global Search Route ======
+  
+  // Global search across all entities
+  app.get("/api/search", ...withAuth(isAuthenticated), async (req, res) => {
+    try {
+      const user = req.currentUser;
+      if (!user) {
+        return res.status(401).json({ error: "Authentication required" });
+      }
+      
+      const query = req.query.q as string;
+      
+      // Validate query parameter
+      if (!query || query.trim().length === 0) {
+        return res.status(400).json({ error: "Search query parameter 'q' is required" });
+      }
+      
+      const organizationId = user.organizationId;
+      const searchPattern = `%${query}%`;
+      
+      // Search forms by type (matching display names)
+      const matchingFormTypes: Array<{ type: string; label: string; url: string }> = [];
+      for (const [type, label] of Object.entries(FORM_TYPE_LABELS)) {
+        if (label.toLowerCase().includes(query.toLowerCase())) {
+          matchingFormTypes.push({
+            type,
+            label,
+            url: `/forms?type=${type}`,
+          });
+        }
+      }
+      const formResults = matchingFormTypes.slice(0, 5);
+      
+      // Search jobs by name or code
+      const jobResults = await db
+        .select({
+          id: jobs.id,
+          name: jobs.name,
+          code: jobs.code,
+          url: jobs.id,
+        })
+        .from(jobs)
+        .where(
+          and(
+            eq(jobs.organizationId, organizationId),
+            or(
+              ilike(jobs.name, searchPattern),
+              ilike(jobs.code, searchPattern)
+            )
+          )
+        )
+        .limit(5);
+      
+      // Format job results with proper URL
+      const formattedJobs = jobResults.map(job => ({
+        id: job.id,
+        name: job.name,
+        code: job.code,
+        url: `/jobs/${job.id}`,
+      }));
+      
+      // Search sites by name or address
+      const siteResults = await db
+        .select({
+          id: sites.id,
+          name: sites.name,
+          address: sites.address,
+        })
+        .from(sites)
+        .where(
+          and(
+            eq(sites.organizationId, organizationId),
+            or(
+              ilike(sites.name, searchPattern),
+              ilike(sites.address, searchPattern)
+            )
+          )
+        )
+        .limit(5);
+      
+      // Format site results with proper URL
+      const formattedSites = siteResults.map(site => ({
+        id: site.id,
+        name: site.name,
+        url: `/sites/${site.id}`,
+      }));
+      
+      // Search incidents by title or incidentCode
+      const incidentResults = await db
+        .select({
+          id: incidents.id,
+          title: incidents.title,
+          incidentCode: incidents.incidentCode,
+        })
+        .from(incidents)
+        .where(
+          and(
+            eq(incidents.organizationId, organizationId),
+            or(
+              ilike(incidents.title, searchPattern),
+              ilike(incidents.incidentCode, searchPattern)
+            )
+          )
+        )
+        .limit(5);
+      
+      // Format incident results with proper URL
+      const formattedIncidents = incidentResults.map(incident => ({
+        id: incident.id,
+        title: incident.title,
+        code: incident.incidentCode,
+        url: `/incidents/${incident.id}`,
+      }));
+      
+      // Search submissions (forms) by type or status
+      const submissionResults = await db
+        .select({
+          id: forms.id,
+          type: forms.type,
+          status: forms.status,
+        })
+        .from(forms)
+        .where(
+          and(
+            eq(forms.organizationId, organizationId),
+            or(
+              ilike(forms.type, searchPattern),
+              ilike(forms.status, searchPattern)
+            )
+          )
+        )
+        .limit(5);
+      
+      // Format submission results with proper URL
+      const formattedSubmissions = submissionResults.map(submission => ({
+        id: submission.id,
+        formType: submission.type,
+        url: `/submissions`,
+      }));
+      
+      // Return categorized results
+      res.json({
+        forms: formResults,
+        jobs: formattedJobs,
+        sites: formattedSites,
+        incidents: formattedIncidents,
+        submissions: formattedSubmissions,
+      });
+    } catch (error: any) {
+      console.error("Search error:", error);
+      res.status(500).json({ error: "Search failed", message: error.message });
+    }
+  });
+  
+  // ====== Job Routes ======
   
   app.get("/api/jobs", isAuthenticated, async (req: any, res) => {
     try {
