@@ -1,4 +1,4 @@
-import { Home, Briefcase, MapPin, Clipboard, CheckSquare, AlertTriangle, FileText, Users, Settings, HelpCircle, ClipboardList, HardHat, FilePlus, FolderCheck } from "lucide-react";
+import { Home, Briefcase, MapPin, Clipboard, CheckSquare, AlertTriangle, FileText, Users, Settings, HelpCircle, ClipboardList, HardHat, FilePlus, FolderCheck, User as UserIcon, LogOut } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -12,9 +12,19 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import {
+  DropdownMenu,
+  DropdownMenuContent,
+  DropdownMenuItem,
+  DropdownMenuLabel,
+  DropdownMenuSeparator,
+  DropdownMenuTrigger,
+} from "@/components/ui/dropdown-menu";
 import { useAuth } from "@/hooks/useAuth";
 import { getRoleGroup, NAVIGATION_CONFIG } from "@shared/rbac-config";
+import { hasCapability } from "@/lib/rbac";
 import { useMemo } from "react";
+import { Link } from "wouter";
 
 const iconMap: Record<string, any> = {
   Home,
@@ -34,7 +44,7 @@ const iconMap: Record<string, any> = {
 };
 
 export function AppSidebar() {
-  const { user } = useAuth();
+  const { user, logout } = useAuth();
   
   const navSections = useMemo(() => {
     if (!user) return [];
@@ -92,15 +102,50 @@ export function AppSidebar() {
       </SidebarContent>
 
       <SidebarFooter className="p-4">
-        <div className="flex items-center gap-3 hover-elevate rounded-lg p-2">
-          <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-primary text-primary-foreground text-xs">{initials}</AvatarFallback>
-          </Avatar>
-          <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">{user?.name || 'User'}</p>
-            <p className="text-xs text-muted-foreground truncate">{user?.role || 'Worker'}</p>
-          </div>
-        </div>
+        <DropdownMenu>
+          <DropdownMenuTrigger asChild>
+            <button
+              className="flex w-full items-center gap-3 hover-elevate rounded-lg p-2"
+              data-testid="button-user-menu"
+            >
+              <Avatar className="h-8 w-8">
+                <AvatarFallback className="bg-primary text-primary-foreground text-xs">{initials}</AvatarFallback>
+              </Avatar>
+              <div className="flex-1 min-w-0 text-left">
+                <p className="text-sm font-medium truncate">{user?.name || 'User'}</p>
+                <p className="text-xs text-muted-foreground truncate">{user?.email}</p>
+              </div>
+            </button>
+          </DropdownMenuTrigger>
+          <DropdownMenuContent align="end" className="w-56">
+            <DropdownMenuLabel>
+              <div className="flex flex-col gap-1">
+                <p className="text-sm font-medium">{user?.name}</p>
+                <p className="text-xs text-muted-foreground">{user?.email}</p>
+              </div>
+            </DropdownMenuLabel>
+            <DropdownMenuSeparator />
+            <DropdownMenuItem asChild>
+              <Link href="/profile" data-testid="link-profile">
+                <UserIcon className="mr-2 h-4 w-4" />
+                <span>Profile</span>
+              </Link>
+            </DropdownMenuItem>
+            {user && (hasCapability(user.role, 'canManageUsers') || hasCapability(user.role, 'canManageIntegrations')) && (
+              <DropdownMenuItem asChild>
+                <Link href="/settings" data-testid="link-settings">
+                  <Settings className="mr-2 h-4 w-4" />
+                  <span>Settings</span>
+                </Link>
+              </DropdownMenuItem>
+            )}
+            <DropdownMenuSeparator />
+            <DropdownMenuItem onClick={() => logout()} data-testid="button-logout">
+              <LogOut className="mr-2 h-4 w-4" />
+              <span>Log out</span>
+            </DropdownMenuItem>
+          </DropdownMenuContent>
+        </DropdownMenu>
       </SidebarFooter>
     </Sidebar>
   );
