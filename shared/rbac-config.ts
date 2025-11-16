@@ -97,8 +97,8 @@ export const NAVIGATION_CONFIG: Record<RoleGroup, NavSection[]> = {
       items: [
         { title: 'Reports', icon: 'FileText', url: '/submissions' },
         { title: 'Form Builder', icon: 'FilePlus', url: '/form-builder' },
-        { title: 'Users & Roles', icon: 'Users', url: '/admin/users' },
-        { title: 'Settings', icon: 'Settings', url: '/admin/settings' },
+        { title: 'Users & Roles', icon: 'Users', url: '/admin/users', capability: 'canManageUsers' },
+        { title: 'Settings', icon: 'Settings', url: '/settings', capability: 'canManageUsers' },
       ],
     },
   ],

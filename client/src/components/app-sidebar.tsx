@@ -73,32 +73,47 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        {navSections.map((section, sectionIndex) => (
-          <SidebarGroup key={sectionIndex}>
-            {section.label && <SidebarGroupLabel>{section.label}</SidebarGroupLabel>}
-            <SidebarGroupContent>
-              <SidebarMenu>
-                {section.items.map((item) => {
-                  const Icon = iconMap[item.icon];
-                  const testId = section.label 
-                    ? `nav-${section.label.toLowerCase()}-${item.title.toLowerCase().replace(/\s/g, '-')}`
-                    : `nav-${item.title.toLowerCase().replace(/\s/g, '-')}`;
-                  
-                  return (
-                    <SidebarMenuItem key={item.title}>
-                      <SidebarMenuButton asChild data-testid={testId}>
-                        <a href={item.url} className="hover-elevate">
-                          {Icon && <Icon className="h-4 w-4" />}
-                          <span>{item.title}</span>
-                        </a>
-                      </SidebarMenuButton>
-                    </SidebarMenuItem>
-                  );
-                })}
-              </SidebarMenu>
-            </SidebarGroupContent>
-          </SidebarGroup>
-        ))}
+        {navSections.map((section, sectionIndex) => {
+          // Filter items based on user capabilities
+          const filteredItems = section.items.filter((item) => {
+            // If item has a capability requirement, check if user has it
+            if (item.capability && user) {
+              return hasCapability(user, item.capability as any);
+            }
+            // If no capability requirement, show the item
+            return true;
+          });
+
+          // Don't render empty sections
+          if (filteredItems.length === 0) return null;
+
+          return (
+            <SidebarGroup key={sectionIndex}>
+              {section.label && <SidebarGroupLabel>{section.label}</SidebarGroupLabel>}
+              <SidebarGroupContent>
+                <SidebarMenu>
+                  {filteredItems.map((item) => {
+                    const Icon = iconMap[item.icon];
+                    const testId = section.label 
+                      ? `nav-${section.label.toLowerCase()}-${item.title.toLowerCase().replace(/\s/g, '-')}`
+                      : `nav-${item.title.toLowerCase().replace(/\s/g, '-')}`;
+                    
+                    return (
+                      <SidebarMenuItem key={item.title}>
+                        <SidebarMenuButton asChild data-testid={testId}>
+                          <a href={item.url} className="hover-elevate">
+                            {Icon && <Icon className="h-4 w-4" />}
+                            <span>{item.title}</span>
+                          </a>
+                        </SidebarMenuButton>
+                      </SidebarMenuItem>
+                    );
+                  })}
+                </SidebarMenu>
+              </SidebarGroupContent>
+            </SidebarGroup>
+          );
+        })}
       </SidebarContent>
 
       <SidebarFooter className="p-4">
