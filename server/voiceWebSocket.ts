@@ -102,6 +102,38 @@ export function setupVoiceWebSocket(server: Server, storage: DatabaseStorage) {
   console.log('🎙️ Voice WebSocket server initialized');
 }
 
+/**
+ * Normalize audio payload from ElevenLabs response
+ * Handles multiple format variations:
+ * - Legacy: message.audio_base64
+ * - Current: message.audio_base_64
+ * - Newer: message.audio_event.audio_base_64
+ * - Object format: message.audio (for backward compatibility)
+ */
+function extractAudioPayload(message: any): string | null {
+  // Check newer nested format first
+  if (message.audio_event?.audio_base_64) {
+    return message.audio_event.audio_base_64;
+  }
+  
+  // Check current format with underscore
+  if (message.audio_base_64) {
+    return message.audio_base_64;
+  }
+  
+  // Check legacy format without underscore
+  if (message.audio_base64) {
+    return message.audio_base64;
+  }
+  
+  // Check object format (backward compatibility)
+  if (message.audio) {
+    return message.audio;
+  }
+  
+  return null;
+}
+
 async function initializeElevenLabsConversation(
   session: CallSession,
   storage: DatabaseStorage
