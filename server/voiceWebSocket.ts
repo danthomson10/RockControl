@@ -13,6 +13,8 @@ interface CallSession {
   conversationState: {
     currentQuestionIndex: number;
     responses: Record<string, any>;
+    transcript?: any[];
+    userTranscript?: string[];
   };
 }
 
@@ -137,6 +139,11 @@ async function initializeElevenLabsConversation(
       try {
         const message = JSON.parse(data.toString());
         
+        // Log all message types for debugging
+        if (message.type !== 'audio' && message.type !== 'ping') {
+          console.log('📨 ElevenLabs message:', message.type, message);
+        }
+        
         // Handle different message types from ElevenLabs
         switch (message.type) {
           case 'audio':
@@ -152,6 +159,34 @@ async function initializeElevenLabsConversation(
             }
             break;
             
+          case 'transcript':
+            // Capture transcript for the session
+            console.log('📝 Transcript:', message.transcript);
+            if (!session.conversationState.transcript) {
+              session.conversationState.transcript = [];
+            }
+            session.conversationState.transcript.push(message.transcript);
+            break;
+            
+          case 'tool_call':
+            // ElevenLabs is calling our API tools (e.g., form submission)
+            console.log('🔧 Tool call:', message.tool_name, message.parameters);
+            break;
+            
+          case 'agent_response':
+            // AI agent's text response (before it's converted to speech)
+            console.log('💬 Agent says:', message.response);
+            break;
+            
+          case 'user_transcript':
+            // User's spoken words transcribed
+            console.log('🎤 User said:', message.user_transcript);
+            if (!session.conversationState.userTranscript) {
+              session.conversationState.userTranscript = [];
+            }
+            session.conversationState.userTranscript.push(message.user_transcript);
+            break;
+            
           case 'interruption':
             console.log('🔇 User interrupted');
             break;
@@ -160,6 +195,10 @@ async function initializeElevenLabsConversation(
             // Respond to keep-alive
             session.elevenLabsWs?.send(JSON.stringify({ type: 'pong' }));
             break;
+            
+          default:
+            // Log unknown message types to help with debugging
+            console.log('❓ Unknown ElevenLabs message type:', message.type);
         }
       } catch (error) {
         console.error('Error parsing ElevenLabs message:', error);

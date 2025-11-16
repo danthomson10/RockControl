@@ -286,6 +286,42 @@ The following secrets are configured in Replit:
 - `ELEVENLABS_API_KEY` - Your ElevenLabs API key
 - `ELEVENLABS_AGENT_ID` - Your ElevenLabs agent ID (agent_8401k9xb1dypexrtqt8n6g8zmtga)
 
+## ElevenLabs Agent Configuration
+
+**Critical Settings in ElevenLabs Dashboard:**
+
+### 1. Audio Format ⚠️
+**Input Audio Format**: PCM 8000 Hz
+- ✅ This MUST match Twilio's output format (no transcoding needed)
+- ❌ Do NOT use 16 kHz - will cause audio compatibility issues
+
+### 2. Custom Tools (API Integration)
+Configure these tools in your ElevenLabs agent:
+
+**Get Form Questions**
+- Name: `get_form_questions`
+- Method: GET
+- URL: `https://rockcontrol.app/api/voice/forms/{formType}`
+- Description: "Fetch questions for a specific form type (e.g., take-5, crew-briefing)"
+
+**Submit Form**
+- Name: `submit_form`
+- Method: POST
+- URL: `https://rockcontrol.app/api/voice/forms/submit`
+- Body: JSON with `formtype`, `formdata`, `caller_phone`
+- Description: "Submit completed form with user responses"
+
+### 3. Webhooks
+Configure these webhooks in your ElevenLabs agent:
+
+**Conversation Start**
+- URL: `https://rockcontrol.app/api/elevenlabs/conversation-start`
+- Sends: Call ID, metadata when conversation begins
+
+**Conversation End**
+- URL: `https://rockcontrol.app/api/elevenlabs/conversation-end`
+- Sends: Call ID, transcript, duration, metadata when conversation ends
+
 ## Troubleshooting
 
 ### Call Doesn't Connect
