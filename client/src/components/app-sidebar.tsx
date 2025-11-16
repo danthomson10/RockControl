@@ -12,34 +12,44 @@ import {
   SidebarFooter,
 } from "@/components/ui/sidebar";
 import { Avatar, AvatarFallback } from "@/components/ui/avatar";
+import { useAuth } from "@/hooks/useAuth";
+import { getRoleGroup, NAVIGATION_CONFIG } from "@shared/rbac-config";
+import { useMemo } from "react";
 
-const navItems = [
-  { title: "Dashboard", icon: Home, url: "/" },
-  { title: "Jobs", icon: Briefcase, url: "/jobs" },
-  { title: "Sites", icon: MapPin, url: "/sites" },
-];
-
-const workItems = [
-  { title: "Today", icon: Clipboard, url: "/today" },
-  { title: "Forms", icon: FileText, url: "/forms" },
-  { title: "Submissions", icon: FolderCheck, url: "/submissions" },
-  { title: "Variations", icon: ClipboardList, url: "/variations" },
-  { title: "Incidents", icon: AlertTriangle, url: "/incidents" },
-];
-
-const safetyItems = [
-  { title: "Inspections", icon: CheckSquare, url: "/safety/inspections" },
-  { title: "Training", icon: HardHat, url: "/safety/training" },
-];
-
-const adminItems = [
-  { title: "Reports", icon: FileText, url: "/submissions" },
-  { title: "Form Builder", icon: FilePlus, url: "/form-builder" },
-  { title: "Users & Roles", icon: Users, url: "/admin/users" },
-  { title: "Settings", icon: Settings, url: "/admin/settings" },
-];
+const iconMap: Record<string, any> = {
+  Home,
+  Briefcase,
+  MapPin,
+  Clipboard,
+  CheckSquare,
+  AlertTriangle,
+  FileText,
+  Users,
+  Settings,
+  HelpCircle,
+  ClipboardList,
+  HardHat,
+  FilePlus,
+  FolderCheck,
+};
 
 export function AppSidebar() {
+  const { user } = useAuth();
+  
+  const navSections = useMemo(() => {
+    if (!user) return [];
+    const roleGroup = getRoleGroup(user.role);
+    return NAVIGATION_CONFIG[roleGroup];
+  }, [user]);
+
+  const initials = useMemo(() => {
+    if (!user) return 'U';
+    const parts = user.name?.split(' ') || ['User'];
+    return parts.length > 1 
+      ? `${parts[0][0]}${parts[1][0]}`.toUpperCase()
+      : parts[0].substring(0, 2).toUpperCase();
+  }, [user]);
+
   return (
     <Sidebar>
       <SidebarHeader className="p-4">
@@ -53,101 +63,42 @@ export function AppSidebar() {
       </SidebarHeader>
 
       <SidebarContent>
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {navItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild data-testid={`nav-${item.title.toLowerCase()}`}>
-                    <a href={item.url} className="hover-elevate">
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Work</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {workItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild data-testid={`nav-${item.title.toLowerCase()}`}>
-                    <a href={item.url} className="hover-elevate">
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Safety</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {safetyItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild data-testid={`nav-safety-${item.title.toLowerCase()}`}>
-                    <a href={item.url} className="hover-elevate">
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupLabel>Admin</SidebarGroupLabel>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              {adminItems.map((item) => (
-                <SidebarMenuItem key={item.title}>
-                  <SidebarMenuButton asChild data-testid={`nav-admin-${item.title.toLowerCase().replace(/\s/g, '-')}`}>
-                    <a href={item.url} className="hover-elevate">
-                      <item.icon className="h-4 w-4" />
-                      <span>{item.title}</span>
-                    </a>
-                  </SidebarMenuButton>
-                </SidebarMenuItem>
-              ))}
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
-
-        <SidebarGroup>
-          <SidebarGroupContent>
-            <SidebarMenu>
-              <SidebarMenuItem>
-                <SidebarMenuButton asChild data-testid="nav-help">
-                  <a href="/help" className="hover-elevate">
-                    <HelpCircle className="h-4 w-4" />
-                    <span>Help</span>
-                  </a>
-                </SidebarMenuButton>
-              </SidebarMenuItem>
-            </SidebarMenu>
-          </SidebarGroupContent>
-        </SidebarGroup>
+        {navSections.map((section, sectionIndex) => (
+          <SidebarGroup key={sectionIndex}>
+            {section.label && <SidebarGroupLabel>{section.label}</SidebarGroupLabel>}
+            <SidebarGroupContent>
+              <SidebarMenu>
+                {section.items.map((item) => {
+                  const Icon = iconMap[item.icon];
+                  const testId = section.label 
+                    ? `nav-${section.label.toLowerCase()}-${item.title.toLowerCase().replace(/\s/g, '-')}`
+                    : `nav-${item.title.toLowerCase().replace(/\s/g, '-')}`;
+                  
+                  return (
+                    <SidebarMenuItem key={item.title}>
+                      <SidebarMenuButton asChild data-testid={testId}>
+                        <a href={item.url} className="hover-elevate">
+                          {Icon && <Icon className="h-4 w-4" />}
+                          <span>{item.title}</span>
+                        </a>
+                      </SidebarMenuButton>
+                    </SidebarMenuItem>
+                  );
+                })}
+              </SidebarMenu>
+            </SidebarGroupContent>
+          </SidebarGroup>
+        ))}
       </SidebarContent>
 
       <SidebarFooter className="p-4">
         <div className="flex items-center gap-3 hover-elevate rounded-lg p-2">
           <Avatar className="h-8 w-8">
-            <AvatarFallback className="bg-primary text-primary-foreground text-xs">JD</AvatarFallback>
+            <AvatarFallback className="bg-primary text-primary-foreground text-xs">{initials}</AvatarFallback>
           </Avatar>
           <div className="flex-1 min-w-0">
-            <p className="text-sm font-medium truncate">John Doe</p>
-            <p className="text-xs text-muted-foreground truncate">Site Supervisor</p>
+            <p className="text-sm font-medium truncate">{user?.name || 'User'}</p>
+            <p className="text-xs text-muted-foreground truncate">{user?.role || 'Worker'}</p>
           </div>
         </div>
       </SidebarFooter>

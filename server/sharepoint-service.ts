@@ -24,6 +24,36 @@ export interface IncidentReportData {
   signature?: string;
 }
 
+export interface CrewBriefingData {
+  'project-site'?: string;
+  'construction-pack-no'?: string;
+  'drawings'?: string;
+  'permit-worksafe'?: string[];
+  'permit-height'?: string[];
+  'permit-hotworks'?: string[];
+  'site-engineer'?: string;
+  'foreman'?: string;
+  'vehicle-prestarts'?: string[];
+  'machine-prestarts'?: string[];
+  'toolbox-talk'?: string[];
+  'additional-check'?: string[];
+  'critical-risks'?: string;
+  'site-plan'?: string;
+  'key-tasks'?: string;
+  'quality-tasks'?: string;
+  'medical-centre'?: string;
+  'site-address'?: string;
+  'site-access'?: string;
+  'first-aider'?: string;
+  'rescue-procedure'?: string;
+  'traffic-management'?: string;
+  'site-communications'?: string;
+  'environmental-hazards'?: string;
+  'engineer-signoff'?: string;
+  'foreman-signoff'?: string;
+  'briefing-date'?: string;
+}
+
 export class SharePointService {
   private mapFieldsToSharePoint(formData: IncidentReportData, customMappings?: Record<string, string>): Record<string, any> {
     const defaultMappings: Record<string, string> = {
@@ -175,6 +205,98 @@ export class SharePointService {
     } catch (error: any) {
       console.error('Failed to get SharePoint list schema:', error);
       throw new Error(`Failed to retrieve list schema: ${error.message}`);
+    }
+  }
+
+  // ====== Crew Briefing Support ======
+
+  private mapCrewBriefingFieldsToSharePoint(formData: CrewBriefingData): Record<string, any> {
+    // Fixed mappings for Crew Briefing - do not accept custom mappings
+    // to prevent incident report field mappings from clobbering these defaults.
+    // Future: Add dedicated crewBriefingFieldMappings config key if customization needed
+    const mappings: Record<string, string> = {
+      'project-site': 'ProjectSite',
+      'construction-pack-no': 'ConstructionPackNo',
+      'drawings': 'Drawings',
+      'permit-worksafe': 'PermitWorksafe',
+      'permit-height': 'PermitHeight',
+      'permit-hotworks': 'PermitHotworks',
+      'site-engineer': 'SiteEngineer',
+      'foreman': 'Foreman',
+      'vehicle-prestarts': 'VehiclePrestarts',
+      'machine-prestarts': 'MachinePrestarts',
+      'toolbox-talk': 'ToolboxTalk',
+      'additional-check': 'AdditionalCheck',
+      'critical-risks': 'CriticalRisks',
+      'site-plan': 'SitePlan',
+      'key-tasks': 'KeyTasks',
+      'quality-tasks': 'QualityTasks',
+      'medical-centre': 'MedicalCentre',
+      'site-address': 'SiteAddress',
+      'site-access': 'SiteAccess',
+      'first-aider': 'FirstAider',
+      'rescue-procedure': 'RescueProcedure',
+      'traffic-management': 'TrafficManagement',
+      'site-communications': 'SiteCommunications',
+      'environmental-hazards': 'EnvironmentalHazards',
+      'engineer-signoff': 'EngineerSignoff',
+      'foreman-signoff': 'ForemanSignoff',
+      'briefing-date': 'BriefingDate',
+    };
+
+    const sharepointFields: Record<string, any> = {};
+
+    for (const [rockControlField, sharepointField] of Object.entries(mappings)) {
+      const value = formData[rockControlField as keyof CrewBriefingData];
+      
+      if (value !== undefined && value !== null && value !== '') {
+        if (rockControlField === 'briefing-date') {
+          sharepointFields[sharepointField] = this.formatDate(value as string);
+        } else if (Array.isArray(value)) {
+          // Checkbox fields come as arrays, convert to boolean for SharePoint Yes/No columns
+          sharepointFields[sharepointField] = value.length > 0;
+        } else {
+          sharepointFields[sharepointField] = value;
+        }
+      }
+    }
+
+    sharepointFields['Title'] = `Crew Briefing - ${formData['project-site'] || 'Unknown Site'} - ${formData['briefing-date'] || new Date().toISOString().split('T')[0]}`;
+
+    return sharepointFields;
+  }
+
+  async createCrewBriefingInSharePoint(
+    config: SharePointConfig,
+    formData: CrewBriefingData
+  ): Promise<string> {
+    if (!config.enabled) {
+      throw new Error('SharePoint integration is not enabled for this organization');
+    }
+
+    if (!config.siteId) {
+      throw new Error('SharePoint site not configured');
+    }
+
+    if (!config.crewBriefingListId) {
+      throw new Error('Crew Briefing list ID is required. Please configure a SharePoint list for Crew Briefings with appropriate columns (ProjectSite, ConstructionPackNo, SiteEngineer, etc.)');
+    }
+
+    // Crew Briefing uses its own default mappings, not incident report custom mappings
+    // Future: Add dedicated crewBriefingFieldMappings to config if custom mapping is needed
+    const fields = this.mapCrewBriefingFieldsToSharePoint(formData);
+
+    try {
+      const result = await graphClient.createListItem(
+        config.siteId,
+        config.crewBriefingListId,
+        fields
+      );
+
+      return result.id;
+    } catch (error: any) {
+      console.error('Failed to create crew briefing in SharePoint:', error);
+      throw new Error(`SharePoint sync failed: ${error.message}`);
     }
   }
 }

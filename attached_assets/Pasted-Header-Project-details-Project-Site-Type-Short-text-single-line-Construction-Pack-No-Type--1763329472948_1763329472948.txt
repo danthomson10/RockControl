@@ -1,0 +1,133 @@
+Header / Project details
+
+Project Site
+
+Type: Short text (single line)
+
+Construction Pack No.
+
+Type: Short text / number
+
+Drawing(s)
+
+Type: Short text (e.g. drawing number or “N/A”)
+
+Permits / Consents Required – Worksafe works notice
+
+Type: Yes/No (checkbox)
+
+Permits / Consents Required – Work at Height Permit
+
+Type: Yes/No (checkbox)
+
+Permits / Consents Required – Hot Works
+
+Type: Yes/No (checkbox)
+
+Site contacts & pre-starts
+
+Site Engineer (name)
+
+Type: Short text (or Person field if using a SharePoint list)
+
+Foreman (name)
+
+Type: Short text (or Person field)
+
+Vehicle Prestarts Done
+
+Type: Yes/No (checkbox)
+
+Machine Prestarts Daily
+
+Type: Yes/No (checkbox)
+
+Additional Checklist Box 1 (unlabelled square on the paper form)
+
+Type: Yes/No (checkbox)
+
+Note: You can add your own label, e.g. “Toolbox talk completed”.
+
+Additional Checklist Box 2 (unlabelled square on the paper form)
+
+Type: Yes/No (checkbox)
+
+Note: Again, label as needed or omit if you don’t want it.
+
+Planning & tasks
+
+Critical Risks and Controls
+
+Type: Long text (multi-line)
+
+Note: Use for listing key hazards and controls for the day. Any standard wording (e.g. fall from height, rockfall, mobile plant, compressed air) can go in the description/help text rather than as questions.
+
+Site Plan – description / reference
+
+Type: Long text (multi-line)
+
+Optional extra: Allow file attachments for uploading the actual site plan drawing.
+
+Key Construction Tasks – What are we doing today?
+
+Type: Long text (multi-line)
+
+Alternative: Several short-text fields (Task 1, Task 2, Task 3, etc.) if you want separate rows.
+
+Key Quality Tasks
+
+Type: Long text (multi-line)
+
+Emergency management
+
+Nearest Medical Centre
+
+Type: Short text
+
+Site Address
+
+Type: Short text
+
+Site Access Notes
+
+Type: Long text (multi-line)
+
+Site First Aider (name)
+
+Type: Short text
+
+Rescue Procedure
+
+Type: Long text (multi-line)
+
+Note: Paper form says “To be completed for each site on the next page” – you can pull that into this field or link to a separate form if needed.
+
+Traffic, communications & environment
+
+Traffic Management
+
+Type: Long text (multi-line)
+
+Example values: “N/A” or details of TMP in place.
+
+Site Communications
+
+Type: Long text (multi-line)
+
+Example help text: “Radio channel, sat phone details, mobile coverage, etc.”
+
+Critical Environmental Hazards and Controls
+
+Type: Long text (multi-line)
+
+Sign-off
+
+Site Engineer – Sign-off / Name
+
+Type: Short text
+
+Optional: Add a Date field “Date of briefing” if you want it explicit.
+
+Site Foreman – Sign-off / Name
+
+Type: Short text

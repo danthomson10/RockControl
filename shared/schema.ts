@@ -419,6 +419,8 @@ export const sharepointConfig = pgTable("sharepoint_config", {
   siteId: text("site_id"),
   incidentListId: text("incident_list_id"),
   incidentListName: text("incident_list_name"),
+  crewBriefingListId: text("crew_briefing_list_id"),
+  crewBriefingListName: text("crew_briefing_list_name"),
   fieldMappings: jsonb("field_mappings"),
   enabled: boolean("enabled").notNull().default(false),
   createdAt: timestamp("created_at").notNull().defaultNow(),
