@@ -1,0 +1,398 @@
+Details
+Insights Summary
+Metrics
+Properties
+Call SID
+CA6a8781c4373759b6f7cb9ad3608055a1
+Date
+18:52:58 NZDT 2025-11-16
+Start Time
+18:52:58 NZDT 2025-11-16
+End Time
+18:53:04 NZDT 2025-11-16
+Duration
+0 sec
+Cost
+—
+From
++64211782272
+To
+
++6435672557
+Direction
+Incoming
+Type
+Phone
+Status
+Busy
+Stir/Shaken Status 
+—
+Errors and Warnings
+Debug Event SID
+NOd535fefdf0db0ca03610414d1da662e7
+Error
+12100
+Message
+Document parse failure
+Request Inspector
++ Expand All
+POST
+https://rockcontrol.app/api/voice/incoming-call
+2025-11-16 05:52:59 UTC245ms200
+Request
+Response
+Headers
+BodyShow Raw
+<!DOCTYPE html>
+<html lang="en" class="replit-ui-theme-root notranslate" translate="no" style="-webkit-app-region:drag">
+    <head>
+        <title data-next-head="">Sign Up - Replit</title>
+        <link rel="shortcut icon" href="/public/icons/favicon-prompt-192.png" sizes="192x192" type="image/png" data-next-head=""/>
+        <meta property="og:title" content="Sign Up" data-next-head=""/>
+        <meta property="og:description" content="Build and deploy software collaboratively with the power of AI without spending a second on setup." data-next-head=""/>
+        <meta property="og:type" content="article" data-next-head=""/>
+        <meta property="og:image" content="https://replit.com/public/images/opengraph.png" data-next-head=""/>
+        <meta property="og:site_name" content="replit" data-next-head=""/>
+        <meta property="fb:app_id" content="1775481339348651" data-next-head=""/>
+        <meta itemProp="name" content="replit" data-next-head=""/>
+        <meta itemProp="description" content="Build and deploy software collaboratively with the power of AI without spending a second on setup." data-next-head=""/>
+        <meta itemProp="image" content="https://replit.com/public/images/opengraph.png" data-next-head=""/>
+        <meta name="description" content="Build and deploy software collaboratively with the power of AI without spending a second on setup." data-next-head=""/>
+        <meta name="keywords" content="replit,ai,software,build,collaborate,IDE,platform,code,deploy,prototype,online,agent" data-next-head=""/>
+        <meta name="author" property="og:author" content="replit" data-next-head=""/>
+        <meta name="twitter:card" content="summary" data-next-head=""/>
+        <meta name="twitter:site" content="@replit" data-next-head=""/>
+        <meta name="twitter:title" content="Sign Up" data-next-head=""/>
+        <meta name="twitter:description" content="Build and deploy software collaboratively with the power of AI without spending a second on setup." data-next-head=""/>
+        <meta name="twitter:image" content="https://replit.com/public/images/opengraph.png" data-next-head=""/>
+        <meta name="twitter:domain" content="replit.com" data-next-head=""/>
+        <meta name="google" content="notranslate" data-next-head=""/>
+        <meta name="viewport" content="width=device-width, initial-scale=1" data-next-head=""/>
+        <style data-next-head="">
+
+    /* PLEX SANS */
+
+    /* ibm-plex-sans-regular - latin */
+    @font-face {
+      font-family: 'IBM Plex Sans';
+      font-style: normal;
+      font-weight: 400;
+      src: local('IBM Plex Sans Regular'), local('IBMPlexSans-Regular'),
+          url('/public/fonts/ibm-plex-sans-v8-latin-regular.woff2') format('woff2'), /* Chrome 26+, Opera 23+, Firefox 39+ */
+          url('/public/fonts/ibm-plex-sans-v8-latin-regular.woff') format('woff'); /* Chrome 6+, Firefox 3.6+, IE 9+, Safari 5.1+ */
+    }
+    /* ibm-plex-sans-italic - latin */
+    @font-face {
+      font-family: 'IBM Plex Sans';
+      font-style: italic;
+      font-weight: 400;
+      src: local('IBM Plex Sans Italic'), local('IBMPlexSans-Italic'),
+          url('/public/fonts/ibm-plex-sans-v8-latin-italic.woff2') format('woff2'), /* Chrome 26+, Opera 23+, Firefox 39+ */
+          url('/public/fonts/ibm-plex-sans-v8-latin-italic.woff') format('woff'); /* Chrome 6+, Firefox 3.6+, IE 9+, Safari 5.1+ */
+    }
+    /* ibm-plex-sans-500 - latin */
+    @font-face {
+      font-family: 'IBM Plex Sans';
+      font-style: normal;
+      font-weight: 500;
+      src: local('IBM Plex Sans Medium'), local('IBMPlexSans-Medium'),
+          url('/public/fonts/ibm-plex-sans-v8-latin-500.woff2') format('woff2'), /* Chrome 26+, Opera 23+, Firefox 39+ */
+          url('/public/fonts/ibm-plex-sans-v8-latin-500.woff') format('woff'); /* Chrome 6+, Firefox 3.6+, IE 9+, Safari 5.1+ */
+    }
+    /* ibm-plex-sans-500italic - latin */
+    @font-face {
+      font-family: 'IBM Plex Sans';
+      font-style: italic;
+      font-weight: 500;
+      src: local('IBM Plex Sans Medium Italic'), local('IBMPlexSans-Medium-Italic'),
+          url('/public/fonts/ibm-plex-sans-v8-latin-500italic.woff2') format('woff2'), /* Chrome 26+, Opera 23+, Firefox 39+ */
+          url('/public/fonts/ibm-plex-sans-v8-latin-500italic.woff') format('woff'); /* Chrome 6+, Firefox 3.6+, IE 9+, Safari 5.1+ */
+    }
+    /* ibm-plex-sans-600 - latin */
+    @font-face {
+      font-family: 'IBM Plex Sans';
+      font-style: normal;
+      font-weight: 600;
+      src: local('IBM Plex Sans Semibold'), local('IBMPlexSans-Semibold'),
+          url('/public/fonts/ibm-plex-sans-v8-latin-600.woff2') format('woff2'), /* Chrome 26+, Opera 23+, Firefox 39+ */
+          url('/public/fonts/ibm-plex-sans-v8-latin-600.woff') format('woff'); /* Chrome 6+, Firefox 3.6+, IE 9+, Safari 5.1+ */
+    }
+    /* ibm-plex-sans-600italic - latin */
+    @font-face {
+      font-family: 'IBM Plex Sans';
+      font-style: italic;
+      font-weight: 600;
+      src: local('IBM Plex Sans Semibold Italic'), local('IBMPlexSans-Semibold-Italic'),
+          url('/public/fonts/ibm-plex-sans-v8-latin-600italic.woff2') format('woff2'), /* Chrome 26+, Opera 23+, Firefox 39+ */
+          url('/public/fonts/ibm-plex-sans-v8-latin-600italic.woff') format('woff'); /* Chrome 6+, Firefox 3.6+, IE 9+, Safari 5.1+ */
+    }
+
+    /* ABC Diatype */
+    @font-face {
+      font-family: 'ABC Diatype';
+      font-weight: 100 1000;
+      src: local('ABC Diatype'), local('ABCDiatype'),
+          url('/public/fonts/ABCDiatypePlusVariable-Regular.woff2') format('woff2')
+    }
+
+    /* ABC Diatype Variable */
+    @font-face {
+      font-family: 'ABC Diatype Variable';
+      font-weight: 100 1000;
+      src: local('ABC Diatype Variable'), local('ABCDiatypeVariable'),
+          url('/public/fonts/ABCDiatype-RegularPixelBeta.woff2') format('woff2')
+    }
+
+    /* ABC Diatype Pixel */
+    @font-face {
+      font-family: 'ABC Diatype Pixel';
+      font-style: normal;
+      font-weight: 400;
+      font-feature-settings: '"ss15"';
+      src: local('ABC Diatype Pixel'), local('ABCDiatypePixel'),
+        url('/public/fonts/ABCDiatype-RegularPixelBeta.woff') format('woff'),
+        url('/public/fonts/ABCDiatype-RegularPixelBeta.woff2') format('woff2')
+    }
+  </style>
+        <meta charSet="utf-8" data-next-head=""/>
+        <link rel="manifest" href="/public/manifest.json" data-next-head=""/>
+        <meta name="theme-color" content="#12141A" data-next-head=""/>
+        <meta http-equiv="origin-trial" content="AsKJNnBESA8LBSWSiA1TeHAuM7wj/zSm2MVlsxnG6yMeAuorNg9zyAEC3w+lp88yOz+9zkJmIQ++T1Cl4asHoAUAAABQeyJvcmlnaW4iOiJodHRwczovL3JlcGxpdC5jb206NDQzIiwiZmVhdHVyZSI6IkRpZ2l0YWxHb29kcyIsImV4cGlyeSI6MTYzMTY2Mzk5OX0=" data-next-head=""/>
+        <link rel="apple-touch-icon" href="/public/icons/favicon-prompt-192.png" data-next-head=""/>
+        <meta name="mobile-web-app-capable" content="yes" data-next-head=""/>
+        <meta name="apple-mobile-web-app-title" content="Replit" data-next-head=""/>
+        <link rel="search" type="application/opensearchdescription+xml" href="/public/opensearch.xml" title="Replit" data-next-head=""/>
+        <style data-next-head="">
+        @font-face {
+          font-family: 'ReplitHack';
+          src: url('/public/fonts/hack-regular.woff2?sha=3114f1256') format('woff2'), url('/public/fonts/hack-regular.woff?sha=3114f1256') format('woff');
+          font-weight: 400;
+          font-style: normal;
+        }
+        
+        @font-face {
+          font-family: 'ReplitHack';
+          src: url('/public/fonts/hack-bold.woff2?sha=3114f1256') format('woff2'), url('/public/fonts/hack-bold.woff?sha=3114f1256') format('woff');
+          font-weight: 700;
+          font-style: normal;
+        }
+        
+        @font-face {
+          font-family: 'ReplitHack';
+          src: url('/public/fonts/hack-italic.woff2?sha=3114f1256') format('woff2'), url('/public/fonts/hack-italic.woff?sha=3114f1256') format('woff');
+          font-weight: 400;
+          font-style: italic;
+        }
+        
+        @font-face {
+          font-family: 'ReplitHack';
+          src: url('/public/fonts/hack-bolditalic.woff2?sha=3114f1256') format('woff2'), url('/public/fonts/hack-bolditalic.woff?sha=3114f1256') format('woff');
+          font-weight: 700;
+          font-style: italic;
+        }
+        </style>
+        <script>
+window.preloadErrorHandler = function (event) {
+  var xhr = new XMLHttpRequest();
+  xhr.open('POST', 'https://http-intake.logs.us5.datadoghq.com/api/v2/logs?dd-api-key=pub31a5047a3a4692afb84a423db984dc57', true);
+  xhr.setRequestHeader('Accept', 'application/json');
+  xhr.setRequestHeader('Content-Type', 'application/json');
+
+  xhr.send(JSON.stringify({
+    ddsource: 'browser',
+    ddtags: 'env:production,version:77cc3ed2',
+    message: 'Browser preload error',
+    preloadError: {
+      errorMessage: event.message,
+      errorFile: event.filename,
+      errorLine: event.lineno,
+      errorColumn: event.colno,
+      errorStackOrType: event.error ? event.error.stack : '',
+      errorJSType: typeof event.error
+    },
+    service: 'website',
+    http: {
+      useragent: window.navigator.userAgent
+    },
+    view: {
+      url: window.location.href,
+      referrer: window.document.referrer
+    }
+  }));
+};
+window.addEventListener('error', window.preloadErrorHandler);
+</script>
+        <link rel="dns-prefetch" href="http://sp.replit.com"/>
+        <script src="https://polyfill-fastly.io/v3/polyfill.min.js?version=3.111.0&amp;flags=gated&amp;features=default,es2015,es2016,es2017,es2018,es2019,es2020,es2021,es2022,ResizeObserver,smoothscroll,TextEncoder"></script>
+        <script type="text/javascript">(function() {AbortSignal.any||(AbortSignal.any=function(n){const e=new AbortController;for(const o of n){if("object"!=typeof o||null===o||!("aborted"in o&&"reason"in o&&"onabort"in o&&"addEventListener"in o))throw new TypeError("Expected all values to implement AbortSignal interface");if(o.aborted){e.abort(o.reason);break}o.addEventListener("abort",(()=>{e.abort(o.reason)}),{signal:e.signal})}return e.signal});})()</script>
+        <script type="text/javascript">CLIENT_IP = JSON.parse(atob('IjI4MDQ6ODY4OmQwNDk6YTg3Zjo4MDdkOjgyNTM6YmUxOTphYTA5Ig=='))</script>
+        <script type="text/javascript">__PUBLIC_ENV__ = JSON.parse(atob('eyJORVhUX1BVQkxJQ19TVFJJUEVfUFVCTElDX0tFWSI6InBrX2xpdmVfNTE1WXBOc0pBbW5ZVk92Zm5zQnFSZEFUV1M2U3piTkFzbE96MXoydHVqZEt1dlJNREF3V01lRlhwNmRKTDFZS1JyUWpCMFdBcDBVREd3bEZZTDdoeHc3RmMwMFFrZnhCRnNMIiwiTkVYVF9QVUJMSUNfRklSRUJBU0VfQVBJX0tFWSI6IkFJemFTeUFSQXpWVFdjX0tPQm9qSWhvbExvMnd6d05PUTZWS2NCOCIsIk5FWFRfUFVCTElDX0ZJUkVCQVNFX1BST0pFQ1RfSUQiOiJyZXBsaXQtd2ViIiwiTkVYVF9QVUJMSUNfRklSRUJBU0VfQVBQX0lEIjoiMToxNzI2NjAzOTY5MTc6d2ViOjU0MTk5N2JiZmJjM2Y2YTdhNDM5M2MiLCJORVhUX1BVQkxJQ19MQVVOQ0hfREFSS0xZX0NMSUVOVF9JRCI6IjYyYjM1YTg2NTE1MmFiMTRjNTk0MjgyMCIsIk5FWFRfUFVCTElDX1NFR01FTlRfS0VZX0NMSUVOVCI6ImRNZVBLR0M0QnFmQml2cGUwSHZsOElvUHB6U0hnamRYIiwiTkVYVF9QVUJMSUNfU1RBVFNJR19DTElFTlRfQVBJX0tFWSI6ImNsaWVudC1CcDdtN3BOQjZIMGZuU0dqVnR4TjVCZVdRdzRCU0FhdDRPRnNYYTNWY1RGIn0='))</script>
+        <script>
+              !function() {var analytics = window.analytics = window.analytics || [];if (!analytics.initialize)if (analytics.invoked) window.console && console.error && console.error("Segment snippet included twice.");else {analytics.invoked = !0;analytics.methods = ["trackSubmit", "trackClick", "trackLink", "trackForm", "pageview", "identify", "reset", "group", "track", "ready", "alias", "debug", "page", "once", "off", "on"];analytics.factory = function(e) {return function() {var t = Array.prototype.slice.call(arguments);t.unshift(e);analytics.push(t);return analytics}};for (var e = 0; e < analytics.methods.length; e++) {var key = analytics.methods[e];analytics[key] = analytics.factory(key)}analytics.load = function(key, e) {var t = document.createElement("script");t.type = "text/javascript";t.defer = !0;t.src = "https://sp.replit.com/sdk.js/v1/" + key + "/sdk.min.js";var n = document.getElementsByTagName("script")[0];n.parentNode.insertBefore(t, n);analytics._loadOptions = e};analytics.SNIPPET_VERSION = "4.15.3";
+                  analytics.load('dMePKGC4BqfBivpe0Hvl8IoPpzSHgjdX', {integrations: {'Segment.io': { apiHost: 'sp.replit.com/v1' }}});
+              }}();
+        </script>
+        <link data-next-font="size-adjust" rel="preconnect" href="/" crossorigin="anonymous"/>
+        <script id="coframe-setup" data-nscript="beforeInteractive" crossorigin="anonymous">
+              (function () {
+                // Early exit for performance testing
+                if (/cf_disable/.test(window.location.search)) return console.warn('[Coframe] Disabled via URL parameter');
+                
+                // For pricing we want to use antiflicker, since we want to apply changes on that page.
+                // If the page is not /pricing, we use Coframe for tracking only.
+                const useFullSetup = /^\/pricing(?:\/|$)?/.test(window.location.pathname);
+                
+                var config = {
+                  projectId: '68c9ad4d4cddb58cf3a1f93d',
+                  startTime: Date.now(),
+                  timeoutMs: 1000,
+                  currentUrl: window.location.href
+                };
+
+                if (useFullSetup) {
+                  config.waitForHydration = true;
+                } else {
+                  config.trackingOnly = true;
+                }
+
+                // Coframe queue setup
+                (window.CFQ = window.CFQ || []).push({ config });
+
+                // Prevent duplicate installation
+                const script_id = 'coframe-sdk-js';
+                if (document.getElementById(script_id)) return console.warn('[Coframe] SDK already installed');
+
+                // Coframe antiflicker CSS
+                if (useFullSetup) {
+                  const edgeUrl = new URL('https://edge.cofra.me/cf.css');
+                  edgeUrl.searchParams.set('config', encodeURIComponent(JSON.stringify(config)));
+                  
+                  const style = document.createElement('link');
+                  style.rel = 'stylesheet';
+                  style.href = edgeUrl.toString();
+                  function hide() { document.head.appendChild(style); }
+                  function show() { style.remove(); }
+                  hide(); setTimeout(show, config.timeoutMs);
+                }
+
+                
+                // Coframe SDK JS
+                const edgeUrl = new URL('https://edge.cofra.me/cf.js');
+                edgeUrl.searchParams.set('config', encodeURIComponent(JSON.stringify(config)));
+                const script = document.createElement('script');
+                script.id = script_id;
+                script.async = true;
+                script.src = edgeUrl.toString();
+                script.onerror = () => { 
+                  if(useFullSetup) show();
+                  console.error('[Coframe] SDK failed to load'); 
+                };
+                document.head.appendChild(script);
+              })();
+            </script>
+        <link rel="preload" href="https://cdn.replit.com/_next/static/chunks/2ed5ace09f863148.css" as="style" crossorigin="anonymous"/>
+        <link rel="stylesheet" href="https://cdn.replit.com/_next/static/chunks/2ed5ace09f863148.css" crossorigin="anonymous" data-n-g=""/>
+        <link rel="preload" href="https://cdn.replit.com/_next/static/chunks/e1220a6afce382cf.css" as="style" crossorigin="anonymous"/>
+        <link rel="stylesheet" href="https://cdn.replit.com/_next/static/chunks/e1220a6afce382cf.css" crossorigin="anonymous" data-n-g=""/>
+        <link rel="preload" href="https://cdn.replit.com/_next/static/chunks/0f8dd5eb52055f9a.css" as="style" crossorigin="anonymous"/>
+        <link rel="stylesheet" href="https://cdn.replit.com/_next/static/chunks/0f8dd5eb52055f9a.css" crossorigin="anonymous" data-n-g=""/>
+        <noscript data-n-css=""></noscript>
+        <script src="https://cdn.replit.com/_next/static/chunks/8b4fbaa738350108.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/1b224bbc8db79db2.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/4279042f82a46c65.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/39dbf7ce754aa0a9.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/38fbf6bc561fd0b5.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/861b87b0de3a7472.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/08703b3602a765a7.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/d01c99210b8f4349.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/b98993e3b0503a70.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/ba697728dee94038.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/f859020dd988a9a5.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/95eff25f72332c7a.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/b8c8ab3e0a671520.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/a19ce222fe0885c4.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/81e2c393749d8a1a.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/9f40922f17cfd15c.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/92790bc2ef649c16.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/b8b99bbacbe10c8b.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/2bd8d8c5b949f121.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/2fbf716ae3c453cc.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/6703ce8e2614863e.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/21f4ffa7ba8da680.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/bc62c4969a40cb12.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/64f98a9f70183536.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/680c9d9756c8f92c.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/b92991e2f3688e73.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/089d1cf0379591bf.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/14fa18ba79750466.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/ed1e693c96a75807.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/f3c0d223fc3a7754.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/f312972b1bc7d6cb.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/turbopack-fa113925b8d9345f.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/1641944600543ceb.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/51edc8a0efb70ddf.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/53e57033af5dfc75.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/8281db0d44bd2f57.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/41d2593427519257.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/2264ec68c9e9da82.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/db0f9164e56ba17e.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/6ad655234804f1c5.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/306d7b6570ca16b9.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/24d80fd495bc9a28.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/a93e2f40e2536be3.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/10a8f5a8c2e56247.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/781f97205754f619.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/c798071e001188f1.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/437fe3b12bf2c2fd.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/e162e758c3af6740.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/a3f134846c5e6f0f.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/8aebb6fb1f2ac898.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/8e093572f1a975fe.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/9b09e535d8d091cc.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/chunks/turbopack-4c60ca5c97300980.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/n07cQWyGQVhSQbEdBVqs3/_ssgManifest.js" defer="" crossorigin="anonymous"></script>
+        <script src="https://cdn.replit.com/_next/static/n07cQWyGQVhSQbEdBVqs3/_buildManifest.js" defer="" crossorigin="anonymous"></script>
+    </head>
+    <body>
+        <div id="__next">
+            <style data-emotion="css-global visnpo">.replit-ui-theme-root{--background-root:#EBECED;--background-default:#FCFCFC;--background-higher:#F0F1F2;--background-highest:#E4E5E6;--background-overlay:#F0F1F2A0;--foreground-default:#07080A;--foreground-dimmer:#3D4047;--foreground-dimmest:#5C5F66;--outline-dimmest:#D2D4D6;--outline-dimmer:#C0C3C4;--outline-default:#AFB1B3;--outline-stronger:#98999C;--outline-strongest:#74767A;--accent-primary-dimmest:#B2D9FF;--accent-primary-dimmer:#6BB5FF;--accent-primary-default:#0F87FF;--accent-primary-stronger:#005CB8;--accent-primary-strongest:#004182;--accent-positive-dimmest:#7AEB8D;--accent-positive-dimmer:#3CC954;--accent-positive-default:#00A11B;--accent-positive-stronger:#036E15;--accent-positive-strongest:#004D0D;--accent-negative-dimmest:#FFC7C7;--accent-negative-dimmer:#FF9494;--accent-negative-default:#FA4B4B;--accent-negative-stronger:#C20A0A;--accent-negative-strongest:#8A0000;--brand-accent-dimmest:#FECCB3;--brand-accent-dimmer:#FE9C6C;--brand-accent-default:#EC4E02;--brand-accent-stronger:#BB3E02;--brand-accent-strongest:#7E2A01;--accent-red-dimmest:#FFC7C7;--accent-red-dimmer:#FF9494;--accent-red-default:#FA4B4B;--accent-red-stronger:#C20A0A;--accent-red-strongest:#8A0000;--accent-orange-dimmest:#FFCC99;--accent-orange-dimmer:#FF9933;--accent-orange-default:#D96D00;--accent-orange-stronger:#964B00;--accent-orange-strongest:#693400;--accent-yellow-dimmest:#EBD66E;--accent-yellow-dimmer:#CFB015;--accent-yellow-default:#A68A00;--accent-yellow-stronger:#736000;--accent-yellow-strongest:#4F4200;--accent-lime-dimmest:#C0E378;--accent-lime-dimmer:#93C926;--accent-lime-default:#639400;--accent-lime-stronger:#466900;--accent-lime-strongest:#3A5700;--accent-green-dimmest:#7AEB8D;--accent-green-dimmer:#3CC954;--accent-green-default:#00A11B;--accent-green-stronger:#036E15;--accent-green-strongest:#004D0D;--accent-teal-dimmest:#6FE5FC;--accent-teal-dimmer:#22C1E0;--accent-teal-default:#0093B0;--accent-teal-stronger:#00687D;--accent-teal-strongest:#004857;--accent-blue-dimmest:#B2D9FF;--accent-blue-dimmer:#6BB5FF;--accent-blue-default:#0F87FF;--accent-blue-stronger:#005CB8;--accent-blue-strongest:#004182;--accent-blurple-dimmest:#D7CFFF;--accent-blurple-dimmer:#B2A3FF;--accent-blurple-default:#8E78FF;--accent-blurple-stronger:#5B40E3;--accent-blurple-strongest:#412F9C;--accent-purple-dimmest:#E6CCFF;--accent-purple-dimmer:#D0A1FF;--accent-purple-default:#B266FF;--accent-purple-stronger:#7F38C7;--accent-purple-strongest:#5B278F;--accent-magenta-dimmest:#FFBFFF;--accent-magenta-dimmer:#FF82FF;--accent-magenta-default:#EB3BEB;--accent-magenta-stronger:#A321A3;--accent-magenta-strongest:#731C73;--accent-pink-dimmest:#FFC7EC;--accent-pink-dimmer:#FF87D7;--accent-pink-default:#F545BA;--accent-pink-stronger:#AB2980;--accent-pink-strongest:#781E5A;--accent-grey-dimmest:#D5D5D5;--accent-grey-dimmer:#B0B0B0;--accent-grey-default:#898989;--accent-grey-stronger:#616161;--accent-grey-strongest:#454545;--accent-brown-dimmest:#FFC9AB;--accent-brown-dimmer:#DEA483;--accent-brown-default:#B07F63;--accent-brown-stronger:#805740;--accent-brown-strongest:#573E30;--black:#0E1525;--white:#FCFCFC;-webkit-print-color-scheme:light;color-scheme:light;}</style>
+            <style data-emotion="css b2skly">.css-b2skly{min-height:100vh;background-color:var(--background-root);color:var(--foreground-default);display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;}</style>
+            <div class="css-b2skly">
+                <style data-emotion="css 1dp71ui">.css-1dp71ui{container:layout/inline-size;-webkit-flex:1 1 auto;-ms-flex:1 1 auto;flex:1 1 auto;}</style>
+                <div class="css-1dp71ui">
+                    <style data-emotion="css 13zqyyc">.css-13zqyyc{background-color:var(--background-default);min-height:100vh;display:grid;grid-template-columns:repeat(1, minmax(0, 1fr));gap:var(--space-16);}@media screen and (min-width: 768px){.css-13zqyyc{grid-template-columns:repeat(2, minmax(0, 1fr));}}</style>
+                    <div class=" useView-module__etopAW__view css-13zqyyc">
+                        <style data-emotion="css 1u21y0c">.css-1u21y0c{display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-flex-direction:column;-ms-flex-direction:column;flex-direction:column;gap:var(--space-8);}@supports (not (gap: 4px)){.css-1u21y0c>*{margin-bottom:var(--space-8);}.css-1u21y0c>*:last-child{margin-bottom:0;}}</style>
+                        <main class="css-1u21y0c">
+                            <style data-emotion="css 8oysku">.css-8oysku{display:block;}</style>
+                            <style data-emotion="css r9arcl">.css-r9arcl{width:100%;display:-webkit-box;display:-webkit-flex;display:-ms-flexbox;display:flex;-webkit-align-items:center;-webkit-box-align:center;-ms-flex-align:center;align-items:center;padding-top:var(--space-12);padding-left:var(--space-12);padding-right:var(--space-12);display:block;}</style>
+                            <div class=" useView-module__etopAW__view css-r9arcl" as="header">
+                                <style data-emotion="css 19tfcnj">.css-19tfcnj{height:40px;display:block;}</style>
+                                <a href="/" aria-label="Home" class="css-19tfcnj">
+                                    <svg width="110.9090909090909" height="40" viewBox="0 0 122 44" fill="none"
+                                        xmlns="http://www.w3.org/2000/svg">
+                                        <path d="M111.515 18.2193V16.7908C111.515 16.5455 111.313 16.3579 111.053 16.3579H106.046V13.5873C106.046 13.342 105.844 13.1544 105.584 13.1544H103.68C103.42 13.1544 103.218 13.3564 103.218 13.5873V16.3579H100.26C100 16.3579 99.798 16.5599 99.798 16.7908V18.2193C99.798 18.4646 100 18.6522 100.26 18.6522H103.218V22.8947C103.218 26.1414 104.747 27.6421 108.038 27.6421H110.721C110.981 27.6421 111.183 27.4401 111.183 27.2092V25.7807C111.183 25.5354 110.981 25.3478 110.721 25.3478H108.47C106.681 25.3478 106.046 24.6407 106.046 22.8802V18.6667H111.053C111.313 18.6522 111.515 18.4502 111.515 18.2193Z" fill="#0F1017"></path>
+                                        <path d="M96.4647 12H93.8672C93.6075 12 93.4055 12.202 93.4055 12.4329V14.2655C93.4055 14.5108 93.6075 14.6984 93.8672 14.6984H96.4647C96.7244 14.6984 96.9264 14.4964 96.9264 14.2655V12.4329C96.912 12.1876 96.71 12 96.4647 12Z" fill="#0F1017"></path>
+                                        <path d="M96.811 25.3478V16.7908C96.811 16.5455 96.6089 16.3579 96.3492 16.3579H90.5339C90.2742 16.3579 90.0721 16.5599 90.0721 16.7908V18.2193C90.0721 18.4646 90.2742 18.6522 90.5339 18.6522H93.9827V25.3478H90.5339C90.2742 25.3478 90.0721 25.5498 90.0721 25.7807V27.2092C90.0721 27.4545 90.2742 27.6421 90.5339 27.6421H100.346C100.606 27.6421 100.808 27.4401 100.808 27.2092V25.7807C100.808 25.5354 100.606 25.3478 100.346 25.3478H96.811Z" fill="#0F1017"></path>
+                                        <path d="M87.8932 25.3478H84.9495V12.4329C84.9495 12.1876 84.7475 12 84.4877 12H78.7157C78.456 12 78.254 12.202 78.254 12.4329V13.8615C78.254 14.1068 78.456 14.2944 78.7157 14.2944H82.1212V25.3478H78.2973C78.0375 25.3478 77.8355 25.5498 77.8355 25.7807V27.2092C77.8355 27.4545 78.0375 27.6421 78.2973 27.6421H87.8932C88.153 27.6421 88.355 27.4401 88.355 27.2092V25.7807C88.355 25.5354 88.153 25.3478 87.8932 25.3478Z" fill="#0F1017"></path>
+                                        <path d="M72.2222 16.1414C71.241 16.1414 70.5339 16.3579 69.9856 16.8773L69.3074 17.5267H68.6869L68.456 16.6898C68.3983 16.5022 68.2251 16.3579 68.0087 16.3579H66.71C66.4502 16.3579 66.2482 16.5599 66.2482 16.7908V31.5671C66.2482 31.8124 66.4502 32 66.71 32H68.6147C68.8745 32 69.0765 31.798 69.0765 31.5671V28.3636L68.8312 26.6465L69.4661 26.5022L70.1443 27.1515C70.6782 27.6421 71.3276 27.8874 72.2944 27.8874C75.0938 27.8874 76.7821 25.9538 76.7821 22.0144C76.7677 18.075 75.0938 16.1414 72.2222 16.1414ZM71.2843 25.5209C69.8557 25.5209 69.0621 24.785 69.0621 23.3853V20.6147C69.0621 19.215 69.8413 18.4791 71.2843 18.4791C73.0303 18.4791 73.824 19.5758 73.824 21.9856C73.8095 24.4242 73.0303 25.5209 71.2843 25.5209Z" fill="#0F1017"></path>
+                                        <path d="M58.1818 16.1414C54.5455 16.1414 52.5974 18.075 52.5974 22C52.5974 25.9394 54.531 27.873 58.1097 27.873C60.8802 27.873 62.6696 26.7186 63.1458 24.7417C63.2179 24.4675 62.987 24.2078 62.6984 24.2078H60.9668C60.7792 24.2078 60.6061 24.3232 60.5339 24.4964C60.2309 25.3478 59.3651 25.7518 58.1963 25.7518C56.3781 25.7518 55.5123 24.7561 55.3968 22.4329H63.2901C63.723 18.0895 61.9192 16.1414 58.1818 16.1414ZM55.4834 20.6724C55.7576 18.9697 56.609 18.176 58.1674 18.176C59.8269 18.176 60.6061 19.0563 60.6494 20.6724H55.4834Z" fill="#0F1017"></path>
+                                        <path d="M46.9697 16.8629L46.3203 17.5123H45.671L45.469 16.6898C45.4257 16.4877 45.2381 16.3579 45.0216 16.3579H40.8658C40.6061 16.3579 40.404 16.5599 40.404 16.7908V18.2193C40.404 18.4646 40.6061 18.6522 40.8658 18.6522H43.3189V25.3478H40.4618C40.202 25.3478 40 25.5498 40 25.7807V27.2092C40 27.4545 40.202 27.6421 40.4618 27.6421H49.4517C49.7114 27.6421 49.9134 27.4401 49.9134 27.2092V25.7807C49.9134 25.5354 49.7114 25.3478 49.4517 25.3478H46.1472V20.6147C46.1472 19.2872 46.9264 18.5945 48.456 18.5945H50.938C51.1977 18.5945 51.3997 18.3925 51.3997 18.1616V16.5887C51.3997 16.3434 51.1977 16.1558 50.938 16.1558H49.4661C48.3838 16.1414 47.5325 16.3434 46.9697 16.8629Z" fill="#0F1017"></path>
+                                        <path d="M10 11.5C10 10.6716 10.6716 10 11.5 10H18.5C19.3284 10 20 10.6716 20 11.5V18H11.5C10.6716 18 10 17.3284 10 16.5V11.5Z" fill="#F26207"></path>
+                                        <path d="M20 18H28.5C29.3284 18 30 18.6716 30 19.5V24.5C30 25.3284 29.3284 26 28.5 26H20V18Z" fill="#F26207"></path>
+                                        <path d="M10 27.5C10 26.6716 10.6716 26 11.5 26H20V32.5C20 33.3284 19.3284 34 18.5 34H11.5C10.6716 34 10 33.3284 10 32.5V27.5Z" fill="#F26207"></path>
+                                    </svg>
+                                </a>
+                            </div>
+                        </main>
+                        <style data-emotion="css 1ir8hsp">.css-1ir8hsp{position:relative;display:none;color:var(--foreground-default);background:#000;}@media screen and (min-width: 768px){.css-1ir8hsp{display:block;}}</style>
+                        <aside class=" useView-module__etopAW__view css-1ir8hsp Surface-module__PJzHbG__surfaceRoot" style="--background-root:#0F1017;--background-default:#1A1C25;--background-higher:#23252F;--background-highest:#2A2C37;--background-overlay:#0F1017A0;--foreground-default:#E6E8ED;--foreground-dimmer:#BFC4CA;--foreground-dimmest:#A2A8B2;--outline-dimmest:#252732;--outline-dimmer:#31343F;--outline-default:#3A3D48;--outline-stronger:#444752;--outline-strongest:#4D505C;--accent-primary-dimmest:#004182;--accent-primary-dimmer:#0053A6;--accent-primary-default:#0079F2;--accent-primary-stronger:#57ABFF;--accent-primary-strongest:#B2D9FF;--accent-positive-dimmest:#044A10;--accent-positive-dimmer:#046113;--accent-positive-default:#009118;--accent-positive-stronger:#6CD97E;--accent-positive-strongest:#BFFFCA;--accent-negative-dimmest:#660000;--accent-negative-dimmer:#A60808;--accent-negative-default:#E52222;--accent-negative-stronger:#FF6666;--accent-negative-strongest:#FFCFCF;--brand-accent-dimmest:#7E2A01;--brand-accent-dimmer:#BB3E02;--brand-accent-default:#EC4E02;--brand-accent-stronger:#FE9C6C;--brand-accent-strongest:#FECCB3;--accent-red-dimmest:#660000;--accent-red-dimmer:#A60808;--accent-red-default:#E52222;--accent-red-stronger:#FF6666;--accent-red-strongest:#FFCFCF;--accent-orange-dimmest:#542A00;--accent-orange-dimmer:#703800;--accent-orange-default:#AD5700;--accent-orange-stronger:#D4781C;--accent-orange-strongest:#FFBD7A;--accent-yellow-dimmest:#4D4000;--accent-yellow-dimmer:#635300;--accent-yellow-default:#967D00;--accent-yellow-stronger:#BFA730;--accent-yellow-strongest:#F2E088;--accent-lime-dimmest:#314A00;--accent-lime-dimmer:#3D5C00;--accent-lime-default:#5A8700;--accent-lime-stronger:#87B825;--accent-lime-strongest:#C4E581;--accent-green-dimmest:#044A10;--accent-green-dimmer:#046113;--accent-green-default:#009118;--accent-green-stronger:#6CD97E;--accent-green-strongest:#7AEB8D;--accent-teal-dimmest:#004452;--accent-teal-dimmer:#006073;--accent-teal-default:#0093B0;--accent-teal-stronger:#27B9D6;--accent-teal-strongest:#69D9F0;--accent-blue-dimmest:#004182;--accent-blue-dimmer:#0053A6;--accent-blue-default:#0079F2;--accent-blue-stronger:#57ABFF;--accent-blue-strongest:#B2D9FF;--accent-blurple-dimmest:#39298A;--accent-blurple-dimmer:#5239CC;--accent-blurple-default:#795EFF;--accent-blurple-stronger:#A694FF;--accent-blurple-strongest:#CEC4FF;--accent-purple-dimmest:#582987;--accent-purple-dimmer:#7633B8;--accent-purple-default:#A64DFF;--accent-purple-stronger:#C78FFF;--accent-purple-strongest:#E2C4FF;--accent-magenta-dimmest:#6B1A6B;--accent-magenta-dimmer:#8A218A;--accent-magenta-default:#C73AC7;--accent-magenta-stronger:#F562F5;--accent-magenta-strongest:#FFBFFF;--accent-pink-dimmest:#6E1B52;--accent-pink-dimmer:#8F226B;--accent-pink-default:#D4359F;--accent-pink-stronger:#FF70CF;--accent-pink-strongest:#FFBAE8;--accent-grey-dimmest:#404040;--accent-grey-dimmer:#545454;--accent-grey-default:#808080;--accent-grey-stronger:#A6A6A6;--accent-grey-strongest:#D4D4D4;--accent-brown-dimmest:#594031;--accent-brown-dimmer:#75503B;--accent-brown-default:#A3765C;--accent-brown-stronger:#D49877;--accent-brown-strongest:#FFC8A8;--black:#0E1525;--white:#FCFCFC"></aside>
+                    </div>
+                </div>
+            </div>
+            <style data-emotion="css-global 1q0mepz">.grecaptcha-badge{visibility:hidden;}</style>
+            <div data-testid="site-presence-loading"></div>
+        </div>
+        <script id="__NEXT_DATA__" type="application/json" crossorigin="anonymous">{"props":{"pageProps":{},"apolloState":{"ROOT_QUERY":{"__typename":"Query","currentUser":null,"userByUsername({\"username\":\"\"})":null}},"apolloClient":null,"userAgent":null,"flagContext":null,"__N_SSG":true},"page":"/auth","query":{},"buildId":"n07cQWyGQVhSQbEdBVqs3","assetPrefix":"https://cdn.replit.com","isFallback":false,"isExperimentalCompile":false,"gsp":true,"appGip":true,"scriptLoader":[]}</script>
+    </body>
+</html>
