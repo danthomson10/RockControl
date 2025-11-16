@@ -4,13 +4,20 @@ Rock Control supports voice-based form completion where workers call **+64 3 567
 
 ## Architecture
 
-**Twilio → ElevenLabs Streaming**
+**Twilio → Rock Control Proxy → ElevenLabs**
 
 1. Worker calls +64 3 567 2557 (Twilio number)
-2. Twilio webhook returns TwiML with `<Connect><Stream>` 
-3. Audio streams bidirectionally to ElevenLabs Conversational AI WebSocket
-4. ElevenLabs AI uses custom tools to fetch forms and submit responses
-5. Form saved to Rock Control database
+2. Twilio webhook returns TwiML with `<Connect><Stream>` pointing to Rock Control WebSocket proxy
+3. Rock Control proxy authenticates with ElevenLabs using API key (server-side, secure)
+4. Audio streams bidirectionally: Twilio ↔ Rock Control Proxy ↔ ElevenLabs
+5. ElevenLabs AI uses custom tools to fetch forms and submit responses
+6. Form saved to Rock Control database
+
+**Why a proxy?**
+- ✅ Keeps API keys server-side (never exposed to Twilio network)
+- ✅ Handles authentication with ElevenLabs securely
+- ✅ Enables bidirectional audio streaming between Twilio and ElevenLabs
+- ✅ Provides a single integration point for monitoring and debugging
 
 ## Features
 
@@ -211,47 +218,55 @@ Rock Control provides webhook endpoints that ElevenLabs calls during the convers
 ## How It Works
 
 ```
-┌─────────────┐      ┌──────────┐      ┌─────────────┐      ┌──────────────┐
-│   Worker    │──────│  Twilio  │──────│ Rock Control│──────│  ElevenLabs  │
-│ (Phone Call)│      │  Number  │      │   Server    │      │  AI Agent    │
-└─────────────┘      └──────────┘      └─────────────┘      └──────────────┘
-       │                    │                   │                     │
-       │   1. Dial Number   │                   │                     │
-       ├───────────────────►│                   │                     │
-       │                    │  2. POST Webhook  │                     │
-       │                    ├──────────────────►│                     │
-       │                    │  3. TwiML Stream  │                     │
-       │                    │◄──────────────────┤                     │
-       │                    │                   │                     │
-       │                    │  4. WebSocket Stream to ElevenLabs      │
-       │                    │◄─────────────────────────────────────────┤
-       │                    │                   │                     │
-       │  5. AI Greeting    │                   │                     │
-       │◄───────────────────┤◄──────────────────┤◄────────────────────┤
-       │                    │                   │                     │
-       │  6. Say Form Type  │                   │                     │
-       ├───────────────────►├──────────────────►├────────────────────►│
-       │                    │                   │  7. GET /forms/:type│
-       │                    │                   │◄────────────────────┤
-       │                    │                   │  8. Form Questions  │
-       │                    │                   ├────────────────────►│
-       │                    │                   │                     │
-       │  9. AI Asks Q's    │                   │                     │
-       │◄───────────────────┤◄──────────────────┤◄────────────────────┤
-       │  10. Answers       │                   │                     │
-       ├───────────────────►├──────────────────►├────────────────────►│
-       │                    │                   │ 11. POST /submit    │
-       │                    │                   │◄────────────────────┤
-       │                    │                   │ 12. Save to DB      │
-       │                    │                   │                     │
-       │  13. Confirmation  │                   │                     │
-       │◄───────────────────┤◄──────────────────┤◄────────────────────┤
+┌─────────────┐     ┌──────────┐     ┌─────────────────┐     ┌──────────────┐
+│   Worker    │─────│  Twilio  │─────│  Rock Control   │─────│  ElevenLabs  │
+│ (Phone Call)│     │  Number  │     │  WS Proxy       │     │  AI Agent    │
+└─────────────┘     └──────────┘     └─────────────────┘     └──────────────┘
+       │                   │                   │                      │
+       │  1. Dial Number   │                   │                      │
+       ├──────────────────►│                   │                      │
+       │                   │ 2. POST /incoming │                      │
+       │                   ├──────────────────►│                      │
+       │                   │ 3. TwiML <Stream> │                      │
+       │                   │◄──────────────────┤                      │
+       │                   │                   │                      │
+       │                   │ 4. Connect WebSocket to Proxy            │
+       │                   ├──────────────────►│                      │
+       │                   │                   │ 5. Auth & Connect    │
+       │                   │                   ├─────────────────────►│
+       │                   │                   │                      │
+       │  6. AI Greeting   │                   │                      │
+       │◄──────────────────┤◄──────────────────┤◄─────────────────────┤
+       │                   │                   │                      │
+       │  7. Speak         │                   │                      │
+       ├──────────────────►├──────────────────►├─────────────────────►│
+       │                   │                   │ 8. GET /forms/:type  │
+       │                   │                   │◄─────────────────────┤
+       │                   │                   │ 9. Return questions  │
+       │                   │                   ├─────────────────────►│
+       │                   │                   │                      │
+       │  10. AI Asks      │                   │                      │
+       │◄──────────────────┤◄──────────────────┤◄─────────────────────┤
+       │  11. Answers      │                   │                      │
+       ├──────────────────►├──────────────────►├─────────────────────►│
+       │                   │                   │ 12. POST /submit     │
+       │                   │                   │◄─────────────────────┤
+       │                   │                   │ 13. Save to DB       │
+       │                   │                   │                      │
+       │  14. Confirmation │                   │                      │
+       │◄──────────────────┤◄──────────────────┤◄─────────────────────┤
 ```
 
 ## API Endpoints
 
 ### Twilio Voice Webhooks
-- `POST /api/voice/incoming-call` - Initial call webhook that starts the conversation
+- `POST /api/voice/incoming-call` - Returns TwiML to stream call to WebSocket proxy
+
+### WebSocket Proxy
+- `wss://rockcontrol.app/api/voice/media-stream` - Bidirectional audio proxy between Twilio and ElevenLabs
+  - Authenticates with ElevenLabs using server-side API key
+  - Forwards audio: Twilio ↔ ElevenLabs
+  - Manages call sessions
 
 ### ElevenLabs Custom Tools (AI Agent API)
 - `GET /api/voice/forms/:formType` - Fetch form questions for a specific form type
