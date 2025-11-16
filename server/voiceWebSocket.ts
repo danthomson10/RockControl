@@ -125,12 +125,14 @@ async function initializeElevenLabsConversation(
     session.elevenLabsWs.on('open', () => {
       console.log('✅ ElevenLabs connection established');
       
-      // Send initial conversation context
+      // Send initial conversation context with audio format configuration
       session.elevenLabsWs?.send(JSON.stringify({
         type: 'conversation_initiation_client_data',
         conversation_initiation_client_data: {
           caller_phone: session.callerPhone,
           form_type: session.formType,
+          // Configure audio format to match Twilio (PCM 8kHz mulaw)
+          output_audio_format: 'pcm_8000',
         }
       }));
     });
@@ -175,7 +177,8 @@ async function initializeElevenLabsConversation(
             
           case 'agent_response':
             // AI agent's text response (before it's converted to speech)
-            console.log('💬 Agent says:', message.response);
+            const agentText = message.agent_response_event?.agent_response || message.response;
+            console.log('💬 Agent says:', agentText);
             break;
             
           case 'user_transcript':
