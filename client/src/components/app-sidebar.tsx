@@ -1,4 +1,4 @@
-import { Home, Briefcase, MapPin, Clipboard, CheckSquare, AlertTriangle, FileText, Users, Settings, HelpCircle, ClipboardList, HardHat, FilePlus } from "lucide-react";
+import { Home, Briefcase, MapPin, Clipboard, CheckSquare, AlertTriangle, FileText, Users, Settings, HelpCircle, ClipboardList, HardHat, FilePlus, FolderCheck } from "lucide-react";
 import {
   Sidebar,
   SidebarContent,
@@ -22,6 +22,7 @@ const navItems = [
 const workItems = [
   { title: "Today", icon: Clipboard, url: "/today" },
   { title: "Forms", icon: FileText, url: "/forms" },
+  { title: "Submissions", icon: FolderCheck, url: "/submissions" },
   { title: "Variations", icon: ClipboardList, url: "/variations" },
   { title: "Incidents", icon: AlertTriangle, url: "/incidents" },
 ];

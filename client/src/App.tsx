@@ -19,6 +19,7 @@ import FillForm from "@/pages/fill-form";
 import FormBuilder from "@/pages/form-builder";
 import Take5Form from "@/pages/take-5-form";
 import VariationForm from "@/pages/variation-form";
+import Submissions from "@/pages/submissions";
 import Jobs from "@/pages/jobs";
 import Sites from "@/pages/sites";
 import JobDetailByCode from "@/pages/job-detail-by-code";
@@ -57,6 +58,7 @@ function Router() {
       <Route path="/" component={Dashboard} />
       <Route path="/forms" component={Forms} />
       <Route path="/forms/:id" component={FillForm} />
+      <Route path="/submissions" component={Submissions} />
       <Route path="/form-builder" component={FormBuilder} />
       <Route path="/jobs" component={Jobs} />
       <Route path="/jobs/:code" component={JobDetailByCode} />

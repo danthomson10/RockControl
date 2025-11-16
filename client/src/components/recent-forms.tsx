@@ -4,10 +4,11 @@ import { Button } from "@/components/ui/button";
 import { FileText, ChevronRight } from "lucide-react";
 import { useQuery } from "@tanstack/react-query";
 import { Skeleton } from "@/components/ui/skeleton";
+import { Link } from "wouter";
 import type { Form } from "@shared/schema";
 import { formatDistanceToNow } from "date-fns";
 
-const statusColors: Record<string, "warning" | "success" | "secondary"> = {
+const statusColors: Record<string, "warning" | "success" | "secondary" | "destructive"> = {
   pending: "warning",
   approved: "success",
   completed: "secondary",
@@ -20,6 +21,8 @@ const formTypeLabels: Record<string, string> = {
   "variation": "Variation",
   "crew-briefing": "Crew Briefing",
   "risk-control-plan": "Risk Control",
+  "incident-report": "Incident Report",
+  "permit-to-work": "Permit to Work",
 };
 
 export function RecentForms() {
@@ -41,10 +44,12 @@ export function RecentForms() {
     <Card>
       <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-4">
         <CardTitle className="text-lg font-semibold">Recent Forms</CardTitle>
-        <Button variant="ghost" size="sm" className="gap-1" data-testid="button-view-all-forms">
-          View all
-          <ChevronRight className="h-4 w-4" />
-        </Button>
+        <Link href="/submissions">
+          <Button variant="ghost" size="sm" className="gap-1" data-testid="button-view-all-forms">
+            View all
+            <ChevronRight className="h-4 w-4" />
+          </Button>
+        </Link>
       </CardHeader>
       <CardContent>
         {isLoading ? (
