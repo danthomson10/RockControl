@@ -14,6 +14,7 @@ import ForgotPassword from "@/pages/forgot-password";
 import ResetPassword from "@/pages/reset-password";
 import RequestAccess from "@/pages/request-access";
 import Dashboard from "@/pages/dashboard";
+import Profile from "@/pages/profile";
 import Forms from "@/pages/forms";
 import FillForm from "@/pages/fill-form";
 import FormBuilder from "@/pages/form-builder";
@@ -56,6 +57,7 @@ function Router() {
   return (
     <Switch>
       <Route path="/" component={Dashboard} />
+      <Route path="/profile" component={Profile} />
       <Route path="/forms" component={Forms} />
       <Route path="/forms/:id" component={FillForm} />
       <Route path="/variations" component={VariationForm} />

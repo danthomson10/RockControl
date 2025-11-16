@@ -1,6 +1,6 @@
 import type { Express } from "express";
 import { storage } from "./storage";
-import { insertClientSchema, insertSiteSchema, insertSiteContactSchema, insertSiteFileSchema, insertJobSchema, insertFormSchema, insertFormTemplateSchema, insertIncidentSchema, insertAccessRequestSchema } from "@shared/schema";
+import { insertClientSchema, insertSiteSchema, insertSiteContactSchema, insertSiteFileSchema, insertJobSchema, insertFormSchema, insertFormTemplateSchema, insertIncidentSchema, insertAccessRequestSchema, updateProfileSchema } from "@shared/schema";
 import { 
   registerSchema, 
   loginSchema, 
@@ -399,6 +399,42 @@ export async function registerRoutes(app: Express) {
     } catch (error) {
       console.error("Error fetching user:", error);
       res.status(500).json({ message: "Failed to fetch user" });
+    }
+  });
+  
+  // Update current user profile
+  app.patch('/api/user/profile', isAuthenticated, async (req: any, res) => {
+    try {
+      const data = updateProfileSchema.parse(req.body);
+      
+      // Get current user ID
+      let userId: number | undefined;
+      if (req.session?.userId) {
+        userId = req.session.userId;
+      } else if (req.user?.claims?.sub) {
+        const replitId = req.user.claims.sub;
+        const user = await storage.users.getByReplitId(replitId);
+        userId = user?.id;
+      }
+      
+      if (!userId) {
+        return res.status(401).json({ message: "Unauthorized" });
+      }
+      
+      // Update user profile
+      const updatedUser = await storage.users.update(userId, data);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json(updatedUser);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Profile update error:", error);
+      res.status(500).json({ message: "Failed to update profile" });
     }
   });
   

@@ -86,6 +86,14 @@ export const insertUserSchema = createInsertSchema(users).omit({
 export type InsertUser = z.infer<typeof insertUserSchema>;
 export type User = typeof users.$inferSelect;
 
+// Schema for updating user profile (only editable fields)
+export const updateProfileSchema = z.object({
+  name: z.string().min(1, "Name is required").max(255),
+  firstName: z.string().max(255).optional().nullable(),
+  lastName: z.string().max(255).optional().nullable(),
+});
+export type UpdateProfile = z.infer<typeof updateProfileSchema>;
+
 // Type for upserting user from Replit Auth
 export type UpsertUser = {
   replitId: string;
