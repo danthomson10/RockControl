@@ -112,6 +112,70 @@ export function setupVoiceRoutes(app: Router, storage: DatabaseStorage) {
     }
   });
 
+  // ElevenLabs Webhook: Conversation Initiation
+  app.post('/api/elevenlabs/conversation-start', async (req, res) => {
+    try {
+      console.log('🎙️ ElevenLabs conversation started:', req.body);
+      
+      // Get available form templates
+      const templates = await storage.formTemplates.getByOrganization(1, false);
+      
+      // Format available forms for the AI agent
+      const availableForms = templates.map((t: any) => ({
+        type: t.type,
+        name: t.name,
+        description: t.description,
+      }));
+      
+      // Return conversation initiation data
+      res.json({
+        available_forms: availableForms,
+        organization: 'Rock Control',
+        greeting_context: 'You are a safety assistant for Rock Control, helping field workers complete safety forms via voice. Be friendly, clear, and concise.',
+        phone_number: req.body.caller_phone_number || 'unknown',
+      });
+    } catch (error: any) {
+      console.error('Error in conversation-start webhook:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
+  // ElevenLabs Webhook: Post-call Summary
+  app.post('/api/elevenlabs/conversation-end', async (req, res) => {
+    try {
+      const { 
+        call_id,
+        transcript,
+        duration_seconds,
+        caller_phone_number,
+        agent_id,
+        metadata 
+      } = req.body;
+      
+      console.log('📞 ElevenLabs conversation ended:', {
+        call_id,
+        duration: duration_seconds,
+        caller: caller_phone_number,
+      });
+      
+      // Log the full conversation data
+      console.log('📝 Transcript:', transcript);
+      console.log('📊 Metadata:', metadata);
+      
+      // TODO: Store in call_logs table when implemented
+      // For now, just acknowledge receipt
+      
+      res.json({ 
+        success: true,
+        message: 'Call data logged successfully',
+        call_id,
+      });
+    } catch (error: any) {
+      console.error('Error in conversation-end webhook:', error);
+      res.status(500).json({ error: error.message });
+    }
+  });
+
   // Webhook for incoming calls
   app.post('/api/voice/incoming-call', (req, res) => {
     const twiml = new VoiceResponse();
