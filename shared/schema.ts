@@ -94,6 +94,20 @@ export const updateProfileSchema = z.object({
 });
 export type UpdateProfile = z.infer<typeof updateProfileSchema>;
 
+// Schema for updating organization (settings page)
+export const updateOrganizationSchema = z.object({
+  name: z.string().min(1, "Organization name is required").max(255),
+  domain: z.string().min(1, "Domain is required").max(255),
+});
+export type UpdateOrganization = z.infer<typeof updateOrganizationSchema>;
+
+// Schema for updating user settings (role and active status)
+export const updateUserSettingsSchema = z.object({
+  role: z.enum(['OrgAdmin', 'ProjectManager', 'HSEManager', 'SiteSupervisor', 'FieldTech', 'ClientViewer', 'Subcontractor']),
+  active: z.boolean(),
+});
+export type UpdateUserSettings = z.infer<typeof updateUserSettingsSchema>;
+
 // Type for upserting user from Replit Auth
 export type UpsertUser = {
   replitId: string;

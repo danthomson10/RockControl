@@ -50,6 +50,7 @@ export interface IStorage {
   organizations: {
     create(data: InsertOrganization): Promise<Organization>;
     getById(id: number): Promise<Organization | undefined>;
+    update(id: number, data: Partial<InsertOrganization>): Promise<Organization | undefined>;
   };
   
   users: {
@@ -60,6 +61,7 @@ export interface IStorage {
     getByOrganization(organizationId: number): Promise<User[]>;
     upsertUser(data: UpsertUser): Promise<User>;
     update(id: number, data: Partial<InsertUser>): Promise<User | undefined>;
+    updateSettings(id: number, organizationId: number, currentUserId: number, data: { role?: string; active?: boolean }): Promise<User | undefined>;
   };
   
   accessRequests: {
@@ -197,6 +199,14 @@ export class DatabaseStorage implements IStorage {
       const [org] = await db.select().from(organizations).where(eq(organizations.id, id));
       return org;
     },
+    
+    update: async (id: number, data: Partial<InsertOrganization>): Promise<Organization | undefined> => {
+      const [org] = await db.update(organizations)
+        .set(data)
+        .where(eq(organizations.id, id))
+        .returning();
+      return org;
+    },
   };
   
   users = {
@@ -270,6 +280,25 @@ export class DatabaseStorage implements IStorage {
       const [user] = await db.update(users)
         .set({ ...data, updatedAt: new Date() })
         .where(eq(users.id, id))
+        .returning();
+      return user;
+    },
+    
+    updateSettings: async (id: number, organizationId: number, currentUserId: number, data: { role?: string; active?: boolean }): Promise<User | undefined> => {
+      // Prevent users from changing their own role or deactivating themselves
+      if (id === currentUserId) {
+        throw new Error("You cannot change your own role or active status");
+      }
+      
+      // Build the update object with proper typing
+      const updateData: any = { updatedAt: new Date() };
+      if (data.role !== undefined) updateData.role = data.role;
+      if (data.active !== undefined) updateData.active = data.active;
+      
+      // Ensure multi-tenant isolation
+      const [user] = await db.update(users)
+        .set(updateData)
+        .where(and(eq(users.id, id), eq(users.organizationId, organizationId)))
         .returning();
       return user;
     },

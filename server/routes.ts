@@ -438,6 +438,90 @@ export async function registerRoutes(app: Express) {
     }
   });
   
+  // ====== Settings Routes ======
+  
+  // Get organization details (for settings page)
+  app.get('/api/settings/organization', ...withAuth(isAuthenticated), requireCapability('canManageUsers'), async (req, res) => {
+    try {
+      const organizationId = req.currentUser!.organizationId;
+      const organization = await storage.organizations.getById(organizationId);
+      
+      if (!organization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+      
+      res.json(organization);
+    } catch (error: any) {
+      console.error("Error fetching organization:", error);
+      res.status(500).json({ message: "Failed to fetch organization" });
+    }
+  });
+  
+  // Update organization details
+  app.patch('/api/settings/organization', ...withAuth(isAuthenticated), requireCapability('canManageUsers'), async (req, res) => {
+    try {
+      const { updateOrganizationSchema } = await import("@shared/schema");
+      const data = updateOrganizationSchema.parse(req.body);
+      const organizationId = req.currentUser!.organizationId;
+      
+      const updatedOrganization = await storage.organizations.update(organizationId, data);
+      
+      if (!updatedOrganization) {
+        return res.status(404).json({ message: "Organization not found" });
+      }
+      
+      res.json(updatedOrganization);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("Organization update error:", error);
+      res.status(500).json({ message: "Failed to update organization" });
+    }
+  });
+  
+  // Get all users in organization (for settings page)
+  app.get('/api/settings/users', ...withAuth(isAuthenticated), requireCapability('canManageUsers'), async (req, res) => {
+    try {
+      const organizationId = req.currentUser!.organizationId;
+      const users = await storage.users.getByOrganization(organizationId);
+      
+      res.json(users);
+    } catch (error: any) {
+      console.error("Error fetching users:", error);
+      res.status(500).json({ message: "Failed to fetch users" });
+    }
+  });
+  
+  // Update user settings (role and active status)
+  app.patch('/api/settings/users/:id', ...withAuth(isAuthenticated), requireCapability('canManageUsers'), async (req, res) => {
+    try {
+      const { updateUserSettingsSchema } = await import("@shared/schema");
+      const data = updateUserSettingsSchema.parse(req.body);
+      const userId = parseInt(req.params.id);
+      const organizationId = req.currentUser!.organizationId;
+      const currentUserId = req.currentUser!.id;
+      
+      if (isNaN(userId)) {
+        return res.status(400).json({ message: "Invalid user ID" });
+      }
+      
+      const updatedUser = await storage.users.updateSettings(userId, organizationId, currentUserId, data);
+      
+      if (!updatedUser) {
+        return res.status(404).json({ message: "User not found" });
+      }
+      
+      res.json(updatedUser);
+    } catch (error: any) {
+      if (error instanceof z.ZodError) {
+        return res.status(400).json({ message: "Invalid input", errors: error.errors });
+      }
+      console.error("User settings update error:", error);
+      res.status(500).json({ message: error.message || "Failed to update user settings" });
+    }
+  });
+  
   // Helper to get organization ID from authenticated user
   const getOrgFromUser = async (req: any): Promise<number> => {
     // Support email/password or Microsoft SSO authentication
