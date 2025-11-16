@@ -113,9 +113,12 @@ async function initializeElevenLabsConversation(
   console.log(`🤖 Connecting to ElevenLabs agent: ${ELEVENLABS_AGENT_ID}`);
   
   try {
-    // Connect to ElevenLabs Conversational AI WebSocket with Twilio-compatible audio format
-    // Using ulaw_8000 (μ-law, 8 kHz) which Twilio media streams expect
-    const wsUrl = `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${ELEVENLABS_AGENT_ID}&output_format=ulaw_8000`;
+    // Connect to ElevenLabs Conversational AI WebSocket
+    // Note: output_format parameter might not be supported for Conversational AI
+    // Trying without it first to establish connection
+    const wsUrl = `wss://api.elevenlabs.io/v1/convai/conversation?agent_id=${ELEVENLABS_AGENT_ID}`;
+    
+    console.log(`🔗 Connecting to: ${wsUrl}`);
     
     session.elevenLabsWs = new WebSocket(wsUrl, {
       headers: {
@@ -223,10 +226,14 @@ async function initializeElevenLabsConversation(
 
     session.elevenLabsWs.on('error', (error) => {
       console.error('❌ ElevenLabs WebSocket error:', error);
+      console.error('❌ Error details:', JSON.stringify(error, null, 2));
     });
 
-    session.elevenLabsWs.on('close', () => {
-      console.log('🔌 ElevenLabs connection closed');
+    session.elevenLabsWs.on('close', (code, reason) => {
+      console.log(`🔌 ElevenLabs connection closed - Code: ${code}, Reason: ${reason.toString()}`);
+      if (code !== 1000) {
+        console.error(`⚠️ Abnormal close code: ${code}`);
+      }
     });
     
   } catch (error) {
