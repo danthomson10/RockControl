@@ -14,23 +14,33 @@ export const ROLE_TO_GROUP: Record<UserRole, RoleGroup> = {
 
 /**
  * Normalizes role strings to match UserRole enum
- * Handles case-insensitive matching for session-auth vs OAuth differences
+ * Handles case-insensitive matching, whitespace, and alternate naming
  */
 export function normalizeRole(role: string): UserRole {
-  const roleLower = role.toLowerCase();
+  // Trim whitespace and convert to lowercase
+  const normalized = role.trim().toLowerCase().replace(/[\s_-]/g, '');
   
-  // Map lowercase variants to canonical UserRole
+  // Map normalized variants to canonical UserRole
   const roleMap: Record<string, UserRole> = {
     'orgadmin': 'OrgAdmin',
+    'organizationadmin': 'OrgAdmin',
+    'admin': 'OrgAdmin',
     'projectmanager': 'ProjectManager',
     'hsemanager': 'HSEManager',
+    'healthandsafetymanager': 'HSEManager',
     'sitesupervisor': 'SiteSupervisor',
+    'supervisor': 'SiteSupervisor',
     'fieldtech': 'FieldTech',
+    'fieldtechnician': 'FieldTech',
+    'technician': 'FieldTech',
     'subcontractor': 'Subcontractor',
+    'contractor': 'Subcontractor',
     'clientviewer': 'ClientViewer',
+    'viewer': 'ClientViewer',
+    'client': 'ClientViewer',
   };
   
-  return roleMap[roleLower] || role as UserRole;
+  return roleMap[normalized] || role.trim() as UserRole;
 }
 
 export function getRoleGroup(role: UserRole): RoleGroup {
