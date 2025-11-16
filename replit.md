@@ -27,7 +27,9 @@ The application features a high-fidelity frontend adhering to the "Rock Control"
 ### Feature Specifications
 - **Multi-tenancy**: Organizations are managed through a dedicated table, and all data operations are scoped to the user's organization using `req.currentUser.organizationId` and storage-layer scoped methods (e.g., `getByIdScoped`, `updateScoped`).
 - **Role-Based Access Control (RBAC)**: A shared RBAC module defines a capability matrix for 7 distinct roles (OrgAdmin, ProjectManager, HSEManager, SiteSupervisor, FieldTech, ClientViewer, Subcontractor). Both server-side middleware and client-side UI helpers enforce these permissions. All mutating API endpoints are protected by `requireCapability` middleware.
-- **Dynamic Forms**: Supports dynamic JSON Schema-based forms (e.g., Take-5, Crew Briefing, Risk Control Plan, Permit to Work), with digital signature and voice memo capture capabilities. Forms can be linked to specific jobs.
+- **Dynamic Forms**: Supports dynamic JSON Schema-based forms (e.g., Take-5, Crew Briefing, Risk Control Plan, Permit to Work, Incident Report), with digital signature and voice memo capture capabilities. Forms can be linked to specific jobs.
+- **Voice-Enabled Forms**: Workers can call +6435672557 (Twilio) and interact with ElevenLabs Conversational AI to complete safety forms hands-free. Voice submissions are tracked with source='voice' and status='pending' for management review.
+- **Submissions Management**: Comprehensive /submissions page with filtering by status, form type, and source (web vs voice), displaying submission details with visual badge indicators for voice-submitted forms.
 - **Job Management**: CRUD operations for construction projects, including status tracking and linking to sites.
 - **Sites Management**: Comprehensive system for managing construction sites, including clients, contacts, and file attachments, with robust multi-tenant isolation and RBAC protection.
 - **Incident Management**: Tracking and management of safety incidents with severity levels.
