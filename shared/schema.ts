@@ -97,7 +97,7 @@ export type UpsertUser = {
 export const userPhoneNumbers = pgTable("user_phone_numbers", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
   userId: integer("user_id").notNull().references(() => users.id, { onDelete: 'cascade' }),
-  phoneNumber: text("phone_number").notNull(), // E.164 format: +64211782272
+  phoneNumber: text("phone_number").notNull().unique(), // E.164 format: +64211782272
   isPrimary: boolean("is_primary").notNull().default(false),
   verified: boolean("verified").notNull().default(false),
   verifiedAt: timestamp("verified_at"),
@@ -106,7 +106,6 @@ export const userPhoneNumbers = pgTable("user_phone_numbers", {
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
 }, (table) => [
-  index("idx_phone_number").on(table.phoneNumber),
   index("idx_user_phone").on(table.userId, table.phoneNumber),
 ]);
 
