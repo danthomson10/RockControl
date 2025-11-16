@@ -131,7 +131,7 @@ export function AppSidebar() {
                 <span>Profile</span>
               </Link>
             </DropdownMenuItem>
-            {user && (hasCapability(user.role, 'canManageUsers') || hasCapability(user.role, 'canManageIntegrations')) && (
+            {user && (hasCapability(user, 'canManageUsers') || hasCapability(user, 'canManageIntegrations')) && (
               <DropdownMenuItem asChild>
                 <Link href="/settings" data-testid="link-settings">
                   <Settings className="mr-2 h-4 w-4" />
