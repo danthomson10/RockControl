@@ -1,78 +1,24 @@
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { FileText, AlertTriangle, FileEdit, ClipboardCheck, Users, Shield, ChevronRight } from "lucide-react";
+import { FileText, AlertTriangle, ChevronRight, Loader2 } from "lucide-react";
 import { Link } from "wouter";
+import { useQuery } from "@tanstack/react-query";
+import type { FormTemplate } from "@shared/schema";
 
-const formTypes = [
-  {
-    id: "take-5",
-    title: "Take-5 Safety Form",
-    description: "Complete before starting work - identify hazards and control measures",
-    icon: Shield,
-    color: "text-blue-600 dark:text-blue-400",
-    bgColor: "bg-blue-50 dark:bg-blue-950/30",
-    path: "/forms/take-5",
-    badge: "Required",
-    badgeVariant: "default" as const,
-  },
-  {
-    id: "crew-briefing",
-    title: "Crew Briefing",
-    description: "Daily team briefing and safety discussion",
-    icon: Users,
-    color: "text-purple-600 dark:text-purple-400",
-    bgColor: "bg-purple-50 dark:bg-purple-950/30",
-    path: "/forms/crew-briefing",
-    badge: "Daily",
-    badgeVariant: "secondary" as const,
-  },
-  {
-    id: "incident-report",
-    title: "Incident Report",
-    description: "Report accidents, near-misses, or safety incidents",
-    icon: AlertTriangle,
-    color: "text-red-600 dark:text-red-400",
-    bgColor: "bg-red-50 dark:bg-red-950/30",
-    path: "/forms/incident-report",
-    badge: "Urgent",
-    badgeVariant: "destructive" as const,
-  },
-  {
-    id: "variation",
-    title: "Variation Form",
-    description: "Document project variations and scope changes",
-    icon: FileEdit,
-    color: "text-orange-600 dark:text-orange-400",
-    bgColor: "bg-orange-50 dark:bg-orange-950/30",
-    path: "/forms/variation",
-    badge: "Contract",
-    badgeVariant: "secondary" as const,
-  },
-  {
-    id: "risk-assessment",
-    title: "Risk Assessment",
-    description: "Detailed risk control plan for high-risk activities",
-    icon: ClipboardCheck,
-    color: "text-green-600 dark:text-green-400",
-    bgColor: "bg-green-50 dark:bg-green-950/30",
-    path: "/forms/risk-assessment",
-    badge: "Planning",
-    badgeVariant: "secondary" as const,
-  },
-  {
-    id: "site-inspection",
-    title: "Site Inspection",
-    description: "Regular site safety and compliance inspection",
-    icon: FileText,
-    color: "text-indigo-600 dark:text-indigo-400",
-    bgColor: "bg-indigo-50 dark:bg-indigo-950/30",
-    path: "/forms/site-inspection",
-    badge: "Weekly",
-    badgeVariant: "secondary" as const,
-  },
-];
+const getFormIcon = (type: string) => {
+  switch (type) {
+    case 'incident-report':
+      return { icon: AlertTriangle, color: "text-red-600 dark:text-red-400", bgColor: "bg-red-50 dark:bg-red-950/30" };
+    default:
+      return { icon: FileText, color: "text-blue-600 dark:text-blue-400", bgColor: "bg-blue-50 dark:bg-blue-950/30" };
+  }
+};
 
 export default function FormsList() {
+  const { data: templates, isLoading } = useQuery<FormTemplate[]>({
+    queryKey: ['/api/form-templates/available'],
+  });
+
   return (
     <div className="space-y-4 sm:space-y-6">
       <div>
@@ -82,36 +28,61 @@ export default function FormsList() {
         </p>
       </div>
 
-      <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
-        {formTypes.map((form) => {
-          const Icon = form.icon;
-          return (
-            <Link key={form.id} href={form.path}>
-              <Card className="hover-elevate cursor-pointer h-full" data-testid={`form-type-${form.id}`}>
-                <CardHeader className="gap-3">
-                  <div className="flex items-start justify-between gap-2">
-                    <div className={`p-3 rounded-lg ${form.bgColor}`}>
-                      <Icon className={`h-6 w-6 ${form.color}`} />
+      {isLoading ? (
+        <div className="flex items-center justify-center min-h-[200px]">
+          <div className="text-center">
+            <Loader2 className="h-8 w-8 animate-spin text-primary mx-auto mb-2" />
+            <p className="text-sm text-muted-foreground">Loading forms...</p>
+          </div>
+        </div>
+      ) : templates && templates.length > 0 ? (
+        <div className="grid gap-4 sm:gap-6 md:grid-cols-2 lg:grid-cols-3">
+          {templates.filter(t => t.active).map((template) => {
+            const { icon: Icon, color, bgColor } = getFormIcon(template.type);
+            const questionCount = (template.schema as any).questions?.length || 0;
+            
+            return (
+              <Link key={template.id} href={`/forms/${template.id}`}>
+                <Card className="hover-elevate cursor-pointer h-full" data-testid={`form-template-${template.id}`}>
+                  <CardHeader className="gap-3">
+                    <div className="flex items-start justify-between gap-2">
+                      <div className={`p-3 rounded-lg ${bgColor}`}>
+                        <Icon className={`h-6 w-6 ${color}`} />
+                      </div>
+                      {template.type === 'incident-report' && (
+                        <Badge variant="destructive" className="text-xs">
+                          Safety
+                        </Badge>
+                      )}
                     </div>
-                    <Badge variant={form.badgeVariant} className="text-xs">
-                      {form.badge}
-                    </Badge>
-                  </div>
-                  <div>
-                    <CardTitle className="text-lg flex items-center justify-between gap-2">
-                      <span>{form.title}</span>
-                      <ChevronRight className="h-5 w-5 text-muted-foreground" />
-                    </CardTitle>
-                    <CardDescription className="mt-2 text-sm">
-                      {form.description}
-                    </CardDescription>
-                  </div>
-                </CardHeader>
-              </Card>
-            </Link>
-          );
-        })}
-      </div>
+                    <div>
+                      <CardTitle className="text-lg flex items-center justify-between gap-2">
+                        <span>{template.name}</span>
+                        <ChevronRight className="h-5 w-5 text-muted-foreground" />
+                      </CardTitle>
+                      <CardDescription className="mt-2 text-sm">
+                        {template.description || `${questionCount} questions`}
+                      </CardDescription>
+                    </div>
+                  </CardHeader>
+                </Card>
+              </Link>
+            );
+          })}
+        </div>
+      ) : (
+        <Card>
+          <CardContent className="pt-6">
+            <div className="text-center py-8">
+              <FileText className="h-12 w-12 text-muted-foreground mx-auto mb-3" />
+              <h3 className="font-semibold mb-2">No forms available</h3>
+              <p className="text-sm text-muted-foreground">
+                Contact your administrator to create form templates.
+              </p>
+            </div>
+          </CardContent>
+        </Card>
+      )}
 
       <Card className="border-primary/20 bg-primary/5">
         <CardContent className="pt-6">

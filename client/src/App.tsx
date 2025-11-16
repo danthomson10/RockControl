@@ -15,6 +15,7 @@ import ResetPassword from "@/pages/reset-password";
 import RequestAccess from "@/pages/request-access";
 import Dashboard from "@/pages/dashboard";
 import Forms from "@/pages/forms";
+import FillForm from "@/pages/fill-form";
 import FormBuilder from "@/pages/form-builder";
 import Take5Form from "@/pages/take-5-form";
 import VariationForm from "@/pages/variation-form";
@@ -55,9 +56,8 @@ function Router() {
     <Switch>
       <Route path="/" component={Dashboard} />
       <Route path="/forms" component={Forms} />
+      <Route path="/forms/:id" component={FillForm} />
       <Route path="/form-builder" component={FormBuilder} />
-      <Route path="/forms/take-5" component={Take5Form} />
-      <Route path="/forms/variation" component={VariationForm} />
       <Route path="/jobs" component={Jobs} />
       <Route path="/jobs/:code" component={JobDetailByCode} />
       <Route path="/sites" component={Sites} />
