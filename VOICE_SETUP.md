@@ -37,7 +37,104 @@ twilio phone-numbers:update YOUR_PHONE_NUMBER \
 
 Replace `YOUR_PHONE_NUMBER` with your Twilio number (e.g., +1234567890)
 
-### 2. Test the Integration
+### 2. Configure ElevenLabs Custom Tools
+
+Rock Control provides two custom API tools that ElevenLabs uses to fetch forms and submit responses:
+
+#### Tool 1: Get Form Questions
+
+**Purpose:** Fetches available form questions for the AI to ask
+
+**Configuration:**
+- **Name:** Get Form Questions
+- **Description:** "Retrieves the list of questions for a specific form type"
+- **Method:** GET
+- **URL:** `https://rock-control-web-app-danthomson10.replit.app/api/voice/forms/{formType}`
+
+**Path Parameters:**
+- **formType** (string, required): The type of form (e.g., "incident-report", "take-5", "crew-briefing")
+
+**Available Form Types:**
+- `incident-report` - Incident/Near Miss Report
+- `take-5` - Take-5 Safety Assessment
+- `crew-briefing` - Daily Crew Briefing
+- `risk-control-plan` - Risk Control Plan
+- `permit-to-work` - Permit to Work
+
+**Response Example:**
+```json
+{
+  "formType": "incident-report",
+  "formName": "Incident Report",
+  "description": "Report safety incidents and near misses",
+  "questions": [
+    {
+      "id": "incident_date",
+      "label": "When did the incident occur?",
+      "type": "date",
+      "required": true
+    },
+    {
+      "id": "incident_location",
+      "label": "Where did the incident happen?",
+      "type": "text",
+      "required": true
+    }
+  ]
+}
+```
+
+#### Tool 2: Submit Form
+
+**Purpose:** Saves completed form responses to the database
+
+**Configuration:**
+- **Name:** Submit Form
+- **Description:** "Submits completed form data with caller information"
+- **Method:** POST
+- **URL:** `https://rock-control-web-app-danthomson10.replit.app/api/voice/forms/submit`
+- **Execution Mode:** Immediate
+- **Response Timeout:** 20 seconds
+
+**Body Parameters:**
+
+1. **formtype** (string, required)
+   - Description: "Form type being submitted"
+   - Example: "incident-report"
+
+2. **formdata** (object, required)
+   - Description: "JSON object containing all the user's responses"
+   - Properties:
+     - **responses** (string, required)
+       - Description: "JSON string containing all form responses"
+       - Example: `"{\"incident_date\":\"2025-11-16\",\"incident_location\":\"Drill Site 3\"}"`
+
+3. **caller_phone** (string, required)
+   - Description: "The phone number of the person calling"
+   - Example: "+6435672557"
+
+**Request Body Example:**
+```json
+{
+  "formtype": "incident-report",
+  "formdata": {
+    "responses": "{\"incident_date\":\"2025-11-16\",\"incident_location\":\"Drill Site 3\",\"incident_description\":\"Near miss with equipment\"}"
+  },
+  "caller_phone": "+6435672557"
+}
+```
+
+**Response Example:**
+```json
+{
+  "success": true,
+  "formCode": "VOICE-INCIDENT-REPORT-1731772800000",
+  "message": "Form submitted successfully",
+  "confirmationSent": true
+}
+```
+
+### 3. Test the Integration
 
 1. Call **+64 3 567 2557** from your mobile phone
 2. You should hear: *"Welcome to Rock Control. Please choose a form to complete..."*
@@ -85,13 +182,15 @@ Replace `YOUR_PHONE_NUMBER` with your Twilio number (e.g., +1234567890)
 
 ## API Endpoints
 
-### Voice Webhooks
-- `POST /api/voice/incoming-call` - Initial call webhook
-- `POST /api/voice/handle-form-selection` - Process form type selection
-- `POST /api/voice/save-form` - Save voice-completed form data
+### Twilio Voice Webhooks
+- `POST /api/voice/incoming-call` - Initial call webhook that starts the conversation
+
+### ElevenLabs Custom Tools (AI Agent API)
+- `GET /api/voice/forms/:formType` - Fetch form questions for a specific form type
+- `POST /api/voice/forms/submit` - Submit completed form with responses
 
 ### WebSocket
-- `wss://[your-domain]/api/voice/media-stream` - Real-time audio streaming
+- `wss://[your-domain]/api/voice/media-stream` - Real-time audio streaming between Twilio and ElevenLabs
 
 ## Environment Variables
 
