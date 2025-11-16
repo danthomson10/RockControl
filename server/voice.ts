@@ -81,30 +81,10 @@ export function setupVoiceRoutes(app: Router, storage: DatabaseStorage) {
       
       console.log('✅ Voice form saved:', formCode);
       
-      // Send SMS confirmation
-      try {
-        const twilioClient = twilio(
-          process.env.TWILIO_ACCOUNT_SID,
-          process.env.TWILIO_AUTH_TOKEN
-        );
-        
-        await twilioClient.messages.create({
-          body: `✅ Your ${formCode} has been submitted successfully via Rock Control Voice. Thank you for keeping our sites safe!`,
-          from: process.env.TWILIO_PHONE_NUMBER,
-          to: caller_phone,
-        });
-        
-        console.log('📱 SMS confirmation sent to', caller_phone);
-      } catch (smsError) {
-        console.error('SMS error:', smsError);
-        // Don't fail the request if SMS fails
-      }
-      
       res.json({ 
         success: true,
         formCode,
-        message: 'Form submitted successfully',
-        confirmationSent: true
+        message: 'Form submitted successfully'
       });
     } catch (error: any) {
       console.error('Error saving voice form:', error);
@@ -235,18 +215,6 @@ export function setupVoiceRoutes(app: Router, storage: DatabaseStorage) {
         status: 'submitted',
         submittedById: 1,
         submittedAt: new Date(),
-      });
-      
-      // Send SMS confirmation
-      const twilioClient = twilio(
-        process.env.TWILIO_ACCOUNT_SID,
-        process.env.TWILIO_AUTH_TOKEN
-      );
-      
-      await twilioClient.messages.create({
-        body: `✅ Your ${formCode} has been submitted successfully. Thank you for using Rock Control.`,
-        from: process.env.TWILIO_PHONE_NUMBER,
-        to: callerPhone,
       });
       
       res.json({ success: true, formCode });
