@@ -69,11 +69,17 @@ export function TopBar() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem data-testid="quick-add-take5">Take-5 Form</DropdownMenuItem>
-            <DropdownMenuItem data-testid="quick-add-variation">Variation</DropdownMenuItem>
-            <DropdownMenuItem data-testid="quick-add-incident">Incident Report</DropdownMenuItem>
+            <DropdownMenuItem asChild data-testid="quick-add-take5">
+              <a href="/forms" className="cursor-pointer">Take-5 Form</a>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild data-testid="quick-add-variation">
+              <a href="/forms" className="cursor-pointer">Variation</a>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild data-testid="quick-add-incident">
+              <a href="/forms" className="cursor-pointer">Incident Report</a>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem data-testid="quick-add-photo">Upload Photo</DropdownMenuItem>
+            <DropdownMenuItem data-testid="quick-add-photo" disabled>Upload Photo</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
@@ -85,11 +91,17 @@ export function TopBar() {
             </Button>
           </DropdownMenuTrigger>
           <DropdownMenuContent align="end" className="w-48">
-            <DropdownMenuItem data-testid="quick-add-take5">Take-5 Form</DropdownMenuItem>
-            <DropdownMenuItem data-testid="quick-add-variation">Variation</DropdownMenuItem>
-            <DropdownMenuItem data-testid="quick-add-incident">Incident Report</DropdownMenuItem>
+            <DropdownMenuItem asChild data-testid="quick-add-take5">
+              <a href="/forms" className="cursor-pointer">Take-5 Form</a>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild data-testid="quick-add-variation">
+              <a href="/forms" className="cursor-pointer">Variation</a>
+            </DropdownMenuItem>
+            <DropdownMenuItem asChild data-testid="quick-add-incident">
+              <a href="/forms" className="cursor-pointer">Incident Report</a>
+            </DropdownMenuItem>
             <DropdownMenuSeparator />
-            <DropdownMenuItem data-testid="quick-add-photo">Upload Photo</DropdownMenuItem>
+            <DropdownMenuItem data-testid="quick-add-photo" disabled>Upload Photo</DropdownMenuItem>
           </DropdownMenuContent>
         </DropdownMenu>
 
