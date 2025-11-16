@@ -2,6 +2,7 @@ import express, { type Request, Response, NextFunction } from "express";
 import { createServer } from "http";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
+import { setupVoiceWebSocket } from "./voiceWebSocket";
 
 const app = express();
 
@@ -51,7 +52,10 @@ app.use((req, res, next) => {
   const server = createServer(app);
   
   // Register routes with auth
-  await registerRoutes(app);
+  const storage = await registerRoutes(app);
+  
+  // Setup voice WebSocket for Twilio integration
+  setupVoiceWebSocket(server, storage);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;

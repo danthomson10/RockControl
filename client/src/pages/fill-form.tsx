@@ -80,8 +80,8 @@ export default function FillForm() {
           ...template,
           description: template.description || ''
         }}
-        onSuccess={() => {
-          // TODO: Navigate to reports page when implemented
+        onSubmit={(data) => {
+          console.log('Form submitted:', data);
           window.location.href = '/forms';
         }}
       />

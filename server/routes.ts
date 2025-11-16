@@ -32,9 +32,16 @@ setInterval(() => {
   }
 }, 10 * 60 * 1000);
 
-export async function registerRoutes(app: Express): Promise<void> {
+export async function registerRoutes(app: Express) {
   // Setup authentication
   await setupAuth(app);
+  
+  // Import and setup voice routes
+  const { setupVoiceRoutes } = await import('./voice');
+  setupVoiceRoutes(app, storage);
+  
+  // Return storage for WebSocket setup
+  return storage;
   
   
   // Public auth routes (no authentication required)
