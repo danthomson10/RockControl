@@ -4,7 +4,7 @@ import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
 import { Mic, MicOff, Phone, PhoneOff, Loader2 } from "lucide-react";
-import SignaturePad from "@/components/SignaturePad";
+import { SimpleSignaturePad } from "@/components/SimpleSignaturePad";
 import { useToast } from "@/hooks/use-toast";
 
 interface VoiceFormModalProps {
@@ -66,8 +66,26 @@ export default function VoiceFormModal({
   };
 
   const startConversation = async () => {
+    // Prevent multiple simultaneous connection attempts
+    if (isConnecting || isConnected) {
+      return;
+    }
+
     try {
       setIsConnecting(true);
+
+      // Request microphone permission first
+      let stream: MediaStream;
+      try {
+        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+        localStreamRef.current = stream;
+      } catch (micError: any) {
+        throw new Error(
+          micError.name === "NotAllowedError" || micError.name === "PermissionDeniedError"
+            ? "Microphone permission denied. Please allow microphone access to use voice forms."
+            : "Could not access microphone. Please check your microphone settings."
+        );
+      }
 
       // Get ephemeral token from backend
       const tokenResponse = await fetch("/api/realtime/session", {
@@ -89,9 +107,7 @@ export default function VoiceFormModal({
         audioEl.srcObject = e.streams[0];
       };
 
-      // Add local audio (microphone)
-      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-      localStreamRef.current = stream;
+      // Add local audio track to peer connection
       pc.addTrack(stream.getTracks()[0]);
 
       // Setup data channel for events
@@ -135,6 +151,21 @@ export default function VoiceFormModal({
           voice: "cedar",
           instructions: getAIInstructions(),
           input_audio_transcription: { model: "whisper-1" },
+          tools: [
+            {
+              type: "function",
+              name: "submit_form",
+              description: "Submit the completed form data after collecting all required fields from the user",
+              parameters: {
+                type: "object",
+                properties: getFormProperties(),
+                required: formSchema.fields
+                  .filter((f: any) => f.required)
+                  .map((f: any) => f.name),
+              },
+            },
+          ],
+          tool_choice: "auto",
         },
       });
 
@@ -163,6 +194,52 @@ export default function VoiceFormModal({
       setIsConnecting(false);
       cleanup();
     }
+  };
+
+  const getFormProperties = () => {
+    if (!formSchema) return {};
+    
+    const properties: any = {};
+    formSchema.fields.forEach((field: any) => {
+      let fieldSchema: any = { description: field.label };
+      
+      switch (field.type) {
+        case "text":
+        case "textarea":
+          fieldSchema.type = "string";
+          break;
+        case "number":
+          fieldSchema.type = "number";
+          break;
+        case "date":
+          fieldSchema.type = "string";
+          fieldSchema.format = "date";
+          break;
+        case "time":
+          fieldSchema.type = "string";
+          fieldSchema.pattern = "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$";
+          break;
+        case "radio":
+          fieldSchema.type = "string";
+          if (field.options) {
+            fieldSchema.enum = field.options;
+          }
+          break;
+        case "checkbox":
+          fieldSchema.type = "array";
+          fieldSchema.items = { type: "string" };
+          if (field.options) {
+            fieldSchema.items.enum = field.options;
+          }
+          break;
+        default:
+          fieldSchema.type = "string";
+      }
+      
+      properties[field.name] = fieldSchema;
+    });
+    
+    return properties;
   };
 
   const getAIInstructions = () => {
@@ -434,7 +511,7 @@ ${formSchema.requiresSignature ? "- After collecting all information, inform the
                 Please provide your digital signature below
               </p>
             </div>
-            <SignaturePad
+            <SimpleSignaturePad
               onSave={handleSignatureComplete}
               onCancel={() => {
                 setShowSignature(false);
