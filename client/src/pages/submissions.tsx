@@ -5,9 +5,10 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
-import { FileText, Search, Filter, Phone, Laptop, ChevronRight, AlertTriangle, CheckCircle2, AlertCircle } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription, DialogFooter } from "@/components/ui/dialog";
+import { FileText, Search, Filter, Phone, Laptop, ChevronRight, AlertTriangle, CheckCircle2, AlertCircle, Download, Copy, Check } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
+import { useToast } from "@/hooks/use-toast";
 import type { Form } from "@shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
 
@@ -41,12 +42,175 @@ export default function Submissions() {
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
   const [selectedForm, setSelectedForm] = useState<Form | null>(null);
+  const [copied, setCopied] = useState(false);
+  const { toast } = useToast();
 
   const { data: forms, isLoading } = useQuery<Form[]>({
     queryKey: ["/api/forms"],
   });
 
   const formsList = Array.isArray(forms) ? forms : [];
+
+  // Generate formatted text report for incident reports
+  const generateIncidentReport = (form: Form): string => {
+    const formData = form.formData as Record<string, unknown>;
+    let report = `INCIDENT REPORT - ${form.formCode}\n`;
+    report += `${'='.repeat(60)}\n\n`;
+    
+    // Header Information
+    report += `Report Type: ${formTypeLabels[form.type] || form.type}\n`;
+    report += `Status: ${form.status.toUpperCase()}\n`;
+    report += `Submitted: ${format(new Date(form.createdAt), 'MMMM d, yyyy h:mm a')}\n`;
+    if (form.source === 'voice') {
+      report += `Source: Voice Call\n`;
+    }
+    report += `\n${'='.repeat(60)}\n\n`;
+
+    // Incident Details
+    report += `INCIDENT DETAILS\n`;
+    report += `${'-'.repeat(60)}\n\n`;
+    
+    if (formData['incident-date']) {
+      report += `Date: ${formData['incident-date']}\n`;
+    }
+    if (formData['incident-time']) {
+      report += `Time: ${formData['incident-time']}\n`;
+    }
+    if (formData['location']) {
+      report += `Location: ${formData['location']}\n`;
+    }
+    if (formData['incident-type']) {
+      report += `Type: ${formData['incident-type']}\n`;
+    }
+    if (formData['severity']) {
+      report += `Severity: ${formData['severity']}\n`;
+    }
+    
+    report += `\n`;
+    
+    if (formData['description']) {
+      report += `Description:\n${formData['description']}\n\n`;
+    }
+    
+    if (formData['people-involved']) {
+      report += `People Involved:\n${formData['people-involved']}\n\n`;
+    }
+    
+    if (formData['injuries'] === 'Yes' && formData['injury-details']) {
+      report += `Injuries:\n${formData['injury-details']}\n\n`;
+    }
+    
+    if (formData['witnesses']) {
+      report += `Witnesses:\n${formData['witnesses']}\n\n`;
+    }
+    
+    if (formData['immediate-actions']) {
+      report += `Immediate Actions Taken:\n${formData['immediate-actions']}\n\n`;
+    }
+    
+    if (formData['reported-by']) {
+      report += `Reported By: ${formData['reported-by']}\n`;
+    }
+    if (formData['contact-number']) {
+      report += `Contact: ${formData['contact-number']}\n`;
+    }
+
+    // AI Analysis Section
+    if (form.aiSummary) {
+      report += `\n${'='.repeat(60)}\n\n`;
+      report += `AI-POWERED ANALYSIS\n`;
+      report += `${'-'.repeat(60)}\n\n`;
+      
+      // Risk Level
+      if (form.aiRecommendations && typeof form.aiRecommendations === 'object' && 'riskLevel' in form.aiRecommendations) {
+        report += `RISK ASSESSMENT: ${String(form.aiRecommendations.riskLevel).toUpperCase()}\n\n`;
+      }
+      
+      // Executive Summary
+      report += `Executive Summary:\n${form.aiSummary}\n\n`;
+      
+      // Recommendations
+      if (form.aiRecommendations && typeof form.aiRecommendations === 'object') {
+        if ('immediateActions' in form.aiRecommendations && Array.isArray(form.aiRecommendations.immediateActions)) {
+          report += `IMMEDIATE ACTIONS REQUIRED:\n`;
+          form.aiRecommendations.immediateActions.forEach((action: string, idx: number) => {
+            report += `  ${idx + 1}. ${action}\n`;
+          });
+          report += `\n`;
+        }
+        
+        if ('preventiveMeasures' in form.aiRecommendations && Array.isArray(form.aiRecommendations.preventiveMeasures)) {
+          report += `PREVENTIVE MEASURES:\n`;
+          form.aiRecommendations.preventiveMeasures.forEach((measure: string, idx: number) => {
+            report += `  ${idx + 1}. ${measure}\n`;
+          });
+          report += `\n`;
+        }
+        
+        if ('followUpTasks' in form.aiRecommendations && Array.isArray(form.aiRecommendations.followUpTasks)) {
+          report += `FOLLOW-UP TASKS:\n`;
+          form.aiRecommendations.followUpTasks.forEach((task: string, idx: number) => {
+            report += `  ${idx + 1}. ${task}\n`;
+          });
+          report += `\n`;
+        }
+      }
+    }
+    
+    report += `\n${'='.repeat(60)}\n`;
+    report += `Generated by Rock Control - TacEdge Project Management\n`;
+    report += `Report Generated: ${format(new Date(), 'MMMM d, yyyy h:mm a')}\n`;
+    
+    return report;
+  };
+
+  // Download report as text file
+  const handleDownloadReport = (form: Form) => {
+    const reportText = generateIncidentReport(form);
+    const blob = new Blob([reportText], { type: 'text/plain' });
+    const url = URL.createObjectURL(blob);
+    const link = document.createElement('a');
+    link.href = url;
+    link.download = `${form.formCode}_Report.txt`;
+    document.body.appendChild(link);
+    link.click();
+    document.body.removeChild(link);
+    URL.revokeObjectURL(url);
+    
+    toast({
+      title: "Report Downloaded",
+      description: "The incident report has been downloaded successfully.",
+    });
+  };
+
+  // Copy summary to clipboard
+  const handleCopySummary = async (form: Form) => {
+    if (!form.aiSummary) {
+      toast({
+        title: "No Summary Available",
+        description: "This report doesn't have an AI-generated summary.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    try {
+      await navigator.clipboard.writeText(form.aiSummary);
+      setCopied(true);
+      setTimeout(() => setCopied(false), 2000);
+      
+      toast({
+        title: "Summary Copied",
+        description: "AI summary has been copied to your clipboard.",
+      });
+    } catch (error) {
+      toast({
+        title: "Copy Failed",
+        description: "Failed to copy summary to clipboard.",
+        variant: "destructive",
+      });
+    }
+  };
 
   // Filter forms
   const filteredForms = formsList.filter((form) => {
@@ -480,6 +644,40 @@ export default function Submissions() {
                   </CardContent>
                 </Card>
               </div>
+
+              {/* Export Actions Footer */}
+              {selectedForm.type === 'incident-report' && (
+                <DialogFooter className="mt-6 gap-2 sm:gap-0">
+                  <Button
+                    variant="outline"
+                    onClick={() => handleCopySummary(selectedForm)}
+                    disabled={!selectedForm.aiSummary}
+                    data-testid="button-copy-summary"
+                    className="gap-2"
+                  >
+                    {copied ? (
+                      <>
+                        <Check className="h-4 w-4" />
+                        Copied!
+                      </>
+                    ) : (
+                      <>
+                        <Copy className="h-4 w-4" />
+                        Copy Summary
+                      </>
+                    )}
+                  </Button>
+                  <Button
+                    variant="default"
+                    onClick={() => handleDownloadReport(selectedForm)}
+                    data-testid="button-download-report"
+                    className="gap-2"
+                  >
+                    <Download className="h-4 w-4" />
+                    Download Full Report
+                  </Button>
+                </DialogFooter>
+              )}
             </>
           )}
         </DialogContent>
