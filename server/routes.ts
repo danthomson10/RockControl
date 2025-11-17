@@ -1662,36 +1662,28 @@ export async function registerRoutes(app: Express) {
     }
   });
   
-  // OpenAI Realtime API endpoints for conversational voice forms
-  app.post("/api/realtime/session", ...withAuth(isAuthenticated), async (req: any, res) => {
+  // ElevenLabs browser voice connection endpoint
+  app.post("/api/voice/browser-session", ...withAuth(isAuthenticated), async (req: any, res) => {
     try {
-      const OPENAI_API_KEY = process.env.OPENAI_API_KEY;
-      if (!OPENAI_API_KEY) {
-        return res.status(500).json({ error: "OpenAI API key not configured" });
+      const ELEVENLABS_API_KEY = process.env.ELEVENLABS_API_KEY;
+      const ELEVENLABS_AGENT_ID = process.env.ELEVENLABS_AGENT_ID || 'agent_8401k9xb1dypexrtqt8n6g8zmtga';
+      
+      if (!ELEVENLABS_API_KEY) {
+        return res.status(500).json({ error: "ElevenLabs API key not configured" });
       }
 
-      const response = await fetch("https://api.openai.com/v1/realtime/sessions", {
-        method: "POST",
-        headers: {
-          "Authorization": `Bearer ${OPENAI_API_KEY}`,
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify({
-          model: "gpt-4o-mini-realtime-preview-2024-12-17",
-          voice: "cedar",
-        }),
+      const { formType } = req.body;
+
+      // Return connection details for browser to connect directly
+      res.json({
+        agentId: ELEVENLABS_AGENT_ID,
+        apiKey: ELEVENLABS_API_KEY,
+        formType,
+        userId: req.currentUser.id,
+        userName: req.currentUser.name,
       });
-
-      if (!response.ok) {
-        const error = await response.text();
-        console.error("OpenAI session creation failed:", error);
-        return res.status(response.status).json({ error: "Failed to create session" });
-      }
-
-      const data = await response.json();
-      res.json(data);
     } catch (error: any) {
-      console.error("Realtime session error:", error);
+      console.error("ElevenLabs session error:", error);
       res.status(500).json({ error: error.message });
     }
   });

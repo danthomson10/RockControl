@@ -37,10 +37,10 @@ export default function VoiceFormModal({
   const [signature, setSignature] = useState<string>("");
   const [currentAssistantMessage, setCurrentAssistantMessage] = useState<string>("");
   
-  const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
-  const dataChannelRef = useRef<RTCDataChannel | null>(null);
-  const audioElementRef = useRef<HTMLAudioElement | null>(null);
-  const localStreamRef = useRef<MediaStream | null>(null);
+  const elevenLabsWsRef = useRef<WebSocket | null>(null);
+  const audioContextRef = useRef<AudioContext | null>(null);
+  const mediaStreamRef = useRef<MediaStream | null>(null);
+  const audioProcessorRef = useRef<ScriptProcessorNode | null>(null);
 
   useEffect(() => {
     if (isOpen) {
@@ -67,123 +67,104 @@ export default function VoiceFormModal({
   };
 
   const startConversation = async () => {
-    // Prevent multiple simultaneous connection attempts
-    if (isConnecting || isConnected) {
-      return;
-    }
+    if (isConnecting || isConnected) return;
 
     try {
       setIsConnecting(true);
 
-      // Request microphone permission first
-      let stream: MediaStream;
-      try {
-        stream = await navigator.mediaDevices.getUserMedia({ audio: true });
-        localStreamRef.current = stream;
-      } catch (micError: any) {
-        throw new Error(
-          micError.name === "NotAllowedError" || micError.name === "PermissionDeniedError"
-            ? "Microphone permission denied. Please allow microphone access to use voice forms."
-            : "Could not access microphone. Please check your microphone settings."
-        );
-      }
+      // Request microphone permission
+      const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+      mediaStreamRef.current = stream;
 
-      // Get ephemeral token from backend
-      const tokenResponse = await fetch("/api/realtime/session", {
+      // Get ElevenLabs connection details from backend
+      const sessionResponse = await fetch("/api/voice/browser-session", {
         method: "POST",
+        headers: { "Content-Type": "application/json" },
+        body: JSON.stringify({ formType }),
       });
-      if (!tokenResponse.ok) throw new Error("Failed to create session");
-      const { client_secret } = await tokenResponse.json();
-
-      // Setup WebRTC
-      const pc = new RTCPeerConnection();
-      peerConnectionRef.current = pc;
-
-      // Create audio element for playback
-      const audioEl = document.createElement("audio");
-      audioEl.autoplay = true;
-      audioElementRef.current = audioEl;
       
-      pc.ontrack = (e) => {
-        audioEl.srcObject = e.streams[0];
+      if (!sessionResponse.ok) throw new Error("Failed to create session");
+      const { agentId, apiKey } = await sessionResponse.json();
+
+      // Connect to our WebSocket proxy (which handles ElevenLabs authentication)
+      const protocol = window.location.protocol === 'https:' ? 'wss:' : 'ws:';
+      const wsUrl = `${protocol}//${window.location.host}/api/voice/browser-websocket?formType=${formType}`;
+      const ws = new WebSocket(wsUrl);
+
+      elevenLabsWsRef.current = ws;
+
+      ws.onopen = () => {
+        console.log("✅ Proxy connected");
+        
+        // Send initialization message with credentials
+        ws.send(JSON.stringify({
+          type: 'init',
+          agentId,
+          apiKey,
+          formType
+        }));
+      };
+      
+      // Wait for connection_ready event before starting audio
+      const handleConnectionReady = () => {
+        console.log("✅ ElevenLabs connected through proxy");
+        setIsConnected(true);
+        setIsConnecting(false);
+        
+        // Start audio processing
+        setupAudioProcessing(stream);
+        
+        // Send initial context
+        ws.send(JSON.stringify({
+          type: 'conversation_initiation_client_data',
+          conversation_initiation_client_data: {
+            form_type: formType,
+            custom_llm_extra_body: {
+              form_schema: formSchema
+            }
+          }
+        }));
       };
 
-      // Add local audio track to peer connection
-      pc.addTrack(stream.getTracks()[0]);
-
-      // Setup data channel for events
-      const dc = pc.createDataChannel("oai-events");
-      dataChannelRef.current = dc;
-
-      dc.addEventListener("message", (e) => {
-        handleServerEvent(JSON.parse(e.data));
-      });
-
-      // Create and set local description
-      const offer = await pc.createOffer();
-      await pc.setLocalDescription(offer);
-
-      // Send offer to OpenAI
-      const baseUrl = "https://api.openai.com/v1/realtime";
-      const sdpResponse = await fetch(`${baseUrl}?model=gpt-realtime-mini-2025-10-06`, {
-        method: "POST",
-        body: offer.sdp,
-        headers: {
-          Authorization: `Bearer ${client_secret.value}`,
-          "Content-Type": "application/sdp",
-        },
-      });
-
-      if (!sdpResponse.ok) throw new Error("Failed to establish connection");
-
-      const answer = {
-        type: "answer" as RTCSdpType,
-        sdp: await sdpResponse.text(),
-      };
-      await pc.setRemoteDescription(answer);
-
-      setIsConnected(true);
-      setIsConnecting(false);
-
-      // Send initial session configuration
-      sendEvent({
-        type: "session.update",
-        session: {
-          voice: "cedar",
-          instructions: getAIInstructions(),
-          input_audio_transcription: { model: "whisper-1" },
-          tools: [
-            {
-              type: "function",
-              name: "submit_form",
-              description: "Submit the completed form data after collecting all required fields from the user",
-              parameters: {
-                type: "object",
-                properties: getFormProperties(),
-                required: formSchema.fields
-                  .filter((f: any) => f.required)
-                  .map((f: any) => f.name),
-              },
-            },
-          ],
-          tool_choice: "auto",
-        },
-      });
-
-      // Start conversation
-      sendEvent({
-        type: "conversation.item.create",
-        item: {
-          type: "message",
-          role: "user",
-          content: [{
-            type: "input_text",
-            text: `I want to fill out a ${formSchema?.title}. Please guide me through the form.`
-          }]
+      ws.onmessage = (event) => {
+        try {
+          const message = JSON.parse(event.data);
+          
+          // Handle proxy control messages
+          if (message.type === 'connection_ready') {
+            handleConnectionReady();
+          } else if (message.type === 'disconnected' || message.type === 'error') {
+            console.error("Proxy error:", message);
+          } else {
+            // Forward to regular handler
+            handleElevenLabsMessage(message);
+          }
+        } catch (error) {
+          console.error("Error parsing message:", error);
         }
-      });
+      };
 
-      sendEvent({ type: "response.create" });
+      ws.onerror = (error) => {
+        console.error("❌ WebSocket error:", error);
+        toast({
+          title: "Connection Error",
+          description: "Failed to connect to voice assistant",
+          variant: "destructive",
+        });
+        cleanup();
+      };
+
+      ws.onclose = (event) => {
+        console.log("🔌 WebSocket closed:", event.code, event.reason);
+        if (event.code !== 1000 && isConnected) {
+          toast({
+            title: "Connection Lost",
+            description: "Voice assistant disconnected",
+            variant: "destructive",
+          });
+        }
+        setIsConnected(false);
+      };
 
     } catch (error: any) {
       console.error("Connection error:", error);
@@ -197,180 +178,129 @@ export default function VoiceFormModal({
     }
   };
 
-  const getFormProperties = () => {
-    if (!formSchema) return {};
+  const setupAudioProcessing = (stream: MediaStream) => {
+    // Create audio context for processing
+    const audioContext = new AudioContext({ sampleRate: 16000 });
+    audioContextRef.current = audioContext;
+
+    const source = audioContext.createMediaStreamSource(stream);
     
-    const properties: any = {};
-    formSchema.fields.forEach((field: any) => {
-      let fieldSchema: any = { description: field.label };
-      
-      switch (field.type) {
-        case "text":
-        case "textarea":
-          fieldSchema.type = "string";
-          break;
-        case "number":
-          fieldSchema.type = "number";
-          break;
-        case "date":
-          fieldSchema.type = "string";
-          fieldSchema.format = "date";
-          break;
-        case "time":
-          fieldSchema.type = "string";
-          fieldSchema.pattern = "^([0-1]?[0-9]|2[0-3]):[0-5][0-9]$";
-          break;
-        case "radio":
-          fieldSchema.type = "string";
-          if (field.options) {
-            fieldSchema.enum = field.options;
-          }
-          break;
-        case "checkbox":
-          fieldSchema.type = "array";
-          fieldSchema.items = { type: "string" };
-          if (field.options) {
-            fieldSchema.items.enum = field.options;
-          }
-          break;
-        default:
-          fieldSchema.type = "string";
-      }
-      
-      properties[field.name] = fieldSchema;
-    });
-    
-    return properties;
-  };
+    // Create processor for capturing audio chunks
+    const processor = audioContext.createScriptProcessor(2048, 1, 1);
+    audioProcessorRef.current = processor;
 
-  const getAIInstructions = () => {
-    if (!formSchema) return "";
-
-    const isIncidentReport = formType.includes('incident');
-
-    if (isIncidentReport) {
-      return `You are a supportive safety assistant helping a worker report a workplace incident. They need to document what happened so it can be properly recorded and addressed.
-
-Your sole purpose is to help them report this incident as quickly and painlessly as possible. Be empathetic - they may be stressed or shaken.
-
-Required information to collect:
-${formSchema.fields.filter((f: any) => f.required).map((f: any) => `- ${f.label}`).join("\n")}
-
-Conversation approach:
-1. Start with brief empathy: "I'm here to help you report the incident. Let's get the details documented."
-2. Let them tell you what happened in their own words first
-3. As they speak, listen for the required information and extract it naturally
-4. Ask follow-up questions only for missing critical details
-5. DON'T recap the entire incident back to them - just confirm key facts if unclear
-6. Once you have all required information, immediately call submit_form - don't ask for permission
-7. Keep it brief and supportive
-
-Critical rules:
-- Extract dates as YYYY-MM-DD, times as HH:MM
-- For severity/type fields, choose from options: ${formSchema.fields.filter((f: any) => f.type === "radio").map((f: any) => `${f.label}: ${f.options?.join(", ")}`).join(" | ")}
-- Be conversational, NOT robotic - don't say "Now I need the..." just ask naturally
-- Submit the form as soon as you have all required fields - don't delay
-${formSchema.requiresSignature ? "- After submitting, they'll provide a digital signature" : ""}`;
-    }
-
-    // Generic form instructions
-    return `You are a helpful assistant helping users complete a "${formSchema.title}" form.
-
-Required information:
-${formSchema.fields.filter((f: any) => f.required).map((f: any) => `- ${f.label}`).join("\n")}
-
-Approach:
-1. Briefly explain you'll help them fill out this form
-2. Have a natural conversation to gather the required information
-3. Don't recap everything - just collect the details efficiently
-4. Call submit_form as soon as you have all required information
-
-Format requirements:
-- Dates: YYYY-MM-DD
-- Times: HH:MM
-- Multiple choice: ${formSchema.fields.filter((f: any) => f.type === "radio").map((f: any) => `${f.label} (${f.options?.join(", ")})`).join("; ")}
-${formSchema.requiresSignature ? "- After submission, user will provide digital signature" : ""}`;
-  };
-
-  const handleServerEvent = (event: any) => {
-    console.log("Server event:", event.type, event);
-
-    switch (event.type) {
-      case "response.audio_transcript.delta":
-        // Accumulate assistant's response in real-time
-        if (event.delta) {
-          setCurrentAssistantMessage((prev) => prev + event.delta);
-        }
-        break;
+    processor.onaudioprocess = (e) => {
+      if (elevenLabsWsRef.current?.readyState === WebSocket.OPEN && !isMuted) {
+        const inputData = e.inputBuffer.getChannelData(0);
         
-      case "response.audio_transcript.done":
-        // Complete assistant message
-        if (event.transcript) {
-          addMessage("assistant", event.transcript);
-          setCurrentAssistantMessage("");
+        // Convert Float32Array to PCM16
+        const pcm16 = new Int16Array(inputData.length);
+        for (let i = 0; i < inputData.length; i++) {
+          const s = Math.max(-1, Math.min(1, inputData[i]));
+          pcm16[i] = s < 0 ? s * 0x8000 : s * 0x7FFF;
+        }
+        
+        // Convert to base64
+        const base64 = btoa(String.fromCharCode(...new Uint8Array(pcm16.buffer)));
+        
+        // Send to ElevenLabs
+        elevenLabsWsRef.current.send(JSON.stringify({
+          user_audio_chunk: base64
+        }));
+      }
+    };
+
+    source.connect(processor);
+    processor.connect(audioContext.destination);
+  };
+
+  const handleElevenLabsMessage = (message: any) => {
+    console.log("📨 ElevenLabs message:", message.type);
+
+    switch (message.type) {
+      case 'audio':
+        // Play audio response
+        playAudioChunk(message.audio_event?.audio_base_64 || message.audio_base64);
+        break;
+
+      case 'user_transcript':
+        // User's speech transcribed
+        if (message.user_transcription_event?.user_transcript) {
+          addMessage("user", message.user_transcription_event.user_transcript);
         }
         break;
 
-      case "conversation.item.input_audio_transcription.completed":
-      case "input_audio_buffer.speech_stopped":
-        // User finished speaking - check for transcript
-        if (event.transcript) {
-          addMessage("user", event.transcript);
+      case 'agent_response':
+        // Agent's text response
+        const agentText = message.agent_response_event?.agent_response;
+        if (agentText) {
+          setCurrentAssistantMessage(agentText);
+          setTimeout(() => {
+            addMessage("assistant", agentText);
+            setCurrentAssistantMessage("");
+          }, 100);
         }
         break;
 
-      case "conversation.item.created":
-        // Handle user input when transcript becomes available
-        if (event.item?.role === "user" && event.item?.content) {
-          const audioContent = event.item.content.find((c: any) => c.type === "input_audio");
-          if (audioContent?.transcript) {
-            addMessage("user", audioContent.transcript);
+      case 'interruption':
+        console.log("🔇 User interrupted");
+        break;
+
+      case 'ping':
+        // Respond to keep-alive
+        elevenLabsWsRef.current?.send(JSON.stringify({ type: 'pong' }));
+        break;
+
+      case 'tool_call':
+        // ElevenLabs is calling a tool (form submission)
+        console.log("🔧 Tool call:", message.tool_call);
+        if (message.tool_call?.tool_name === 'submit_form') {
+          const submittedData = message.tool_call.parameters || {};
+          console.log("📝 Form data received:", submittedData);
+          setFormData(submittedData);
+          
+          if (formSchema?.requiresSignature) {
+            setShowSignature(true);
+            addMessage("assistant", "Perfect! I've collected all the information. Please provide your digital signature to complete the form.");
+          } else {
+            handleSubmit(submittedData);
           }
         }
         break;
 
-      case "response.function_call_arguments.done":
-        if (event.name === "submit_form") {
-          try {
-            const data = JSON.parse(event.arguments);
-            setFormData(data);
-            
-            if (formSchema?.requiresSignature) {
-              setShowSignature(true);
-              sendEvent({
-                type: "conversation.item.create",
-                item: {
-                  type: "message",
-                  role: "assistant",
-                  content: [{
-                    type: "text",
-                    text: "Great! I've collected all the information. Please provide your digital signature to complete the form."
-                  }]
-                }
-              });
-            } else {
-              handleSubmit(data);
-            }
-          } catch (error) {
-            console.error("Error parsing form data:", error);
-          }
-        }
-        break;
-
-      case "error":
-        console.error("OpenAI error:", event.error);
-        toast({
-          title: "Error",
-          description: event.error.message || "An error occurred",
-          variant: "destructive",
-        });
-        break;
+      default:
+        console.log("❓ Unknown message type:", message.type);
     }
   };
 
-  const sendEvent = (event: any) => {
-    if (dataChannelRef.current?.readyState === "open") {
-      dataChannelRef.current.send(JSON.stringify(event));
+  const playAudioChunk = (base64Audio: string) => {
+    if (!base64Audio || !audioContextRef.current) return;
+
+    try {
+      // Decode base64 to binary
+      const binaryString = atob(base64Audio);
+      const bytes = new Uint8Array(binaryString.length);
+      for (let i = 0; i < binaryString.length; i++) {
+        bytes[i] = binaryString.charCodeAt(i);
+      }
+
+      // Convert PCM16 to Float32Array for playback
+      const pcm16 = new Int16Array(bytes.buffer);
+      const float32 = new Float32Array(pcm16.length);
+      for (let i = 0; i < pcm16.length; i++) {
+        float32[i] = pcm16[i] / (pcm16[i] < 0 ? 0x8000 : 0x7FFF);
+      }
+
+      // Create audio buffer and play
+      const audioBuffer = audioContextRef.current.createBuffer(1, float32.length, 16000);
+      audioBuffer.getChannelData(0).set(float32);
+
+      const source = audioContextRef.current.createBufferSource();
+      source.buffer = audioBuffer;
+      source.connect(audioContextRef.current.destination);
+      source.start();
+    } catch (error) {
+      console.error("Error playing audio:", error);
     }
   };
 
@@ -379,11 +309,7 @@ ${formSchema.requiresSignature ? "- After submission, user will provide digital 
   };
 
   const toggleMute = () => {
-    if (localStreamRef.current) {
-      const audioTrack = localStreamRef.current.getAudioTracks()[0];
-      audioTrack.enabled = !audioTrack.enabled;
-      setIsMuted(!audioTrack.enabled);
-    }
+    setIsMuted(!isMuted);
   };
 
   const handleSubmit = (data: any) => {
@@ -398,19 +324,22 @@ ${formSchema.requiresSignature ? "- After submission, user will provide digital 
   };
 
   const cleanup = () => {
-    if (localStreamRef.current) {
-      localStreamRef.current.getTracks().forEach((track) => track.stop());
-      localStreamRef.current = null;
+    if (mediaStreamRef.current) {
+      mediaStreamRef.current.getTracks().forEach((track) => track.stop());
+      mediaStreamRef.current = null;
     }
-    if (peerConnectionRef.current) {
-      peerConnectionRef.current.close();
-      peerConnectionRef.current = null;
+    if (audioProcessorRef.current) {
+      audioProcessorRef.current.disconnect();
+      audioProcessorRef.current = null;
     }
-    if (audioElementRef.current) {
-      audioElementRef.current.srcObject = null;
-      audioElementRef.current = null;
+    if (audioContextRef.current) {
+      audioContextRef.current.close();
+      audioContextRef.current = null;
     }
-    dataChannelRef.current = null;
+    if (elevenLabsWsRef.current) {
+      elevenLabsWsRef.current.close();
+      elevenLabsWsRef.current = null;
+    }
     setIsConnected(false);
     setMessages([]);
     setFormData({});
@@ -480,7 +409,7 @@ ${formSchema.requiresSignature ? "- After submission, user will provide digital 
                       <p className="text-sm">{currentAssistantMessage}</p>
                       <span className="text-xs opacity-70 flex items-center gap-1">
                         <Loader2 className="h-3 w-3 animate-spin" />
-                        Typing...
+                        Speaking...
                       </span>
                     </div>
                   </div>
