@@ -125,7 +125,7 @@ export default function VoiceFormModal({
 
       // Send offer to OpenAI
       const baseUrl = "https://api.openai.com/v1/realtime";
-      const sdpResponse = await fetch(`${baseUrl}?model=gpt-4o-mini-realtime-preview-2024-12-17`, {
+      const sdpResponse = await fetch(`${baseUrl}?model=gpt-realtime-mini-2025-10-06`, {
         method: "POST",
         body: offer.sdp,
         headers: {
@@ -246,27 +246,50 @@ export default function VoiceFormModal({
   const getAIInstructions = () => {
     if (!formSchema) return "";
 
-    return `You are a helpful assistant helping users fill out a "${formSchema.title}" form through natural conversation.
+    const isIncidentReport = formType.includes('incident');
 
-Form Description: ${formSchema.description}
+    if (isIncidentReport) {
+      return `You are a supportive safety assistant helping a worker report a workplace incident. They need to document what happened so it can be properly recorded and addressed.
 
-Required Fields:
-${formSchema.fields.map((f: any) => `- ${f.label} (${f.type})${f.required ? " [REQUIRED]" : ""}`).join("\n")}
+Your sole purpose is to help them report this incident as quickly and painlessly as possible. Be empathetic - they may be stressed or shaken.
 
-Instructions:
-1. Greet the user warmly and explain you'll help them fill out this form
-2. Ask conversational questions to gather information for each field
-3. Listen carefully to their responses and extract relevant information
-4. Confirm important details back to them
-5. When you've collected all required information, call the submit_form function
-6. Be patient and helpful if they need clarification
+Required information to collect:
+${formSchema.fields.filter((f: any) => f.required).map((f: any) => `- ${f.label}`).join("\n")}
 
-Important:
-- Extract dates in YYYY-MM-DD format
-- Extract times in HH:MM format
-- For radio fields, choose from: ${formSchema.fields.filter((f: any) => f.type === "radio").map((f: any) => f.options?.join(", ")).join("; ")}
-- Be conversational and natural, don't read field names robotically
-${formSchema.requiresSignature ? "- After collecting all information, inform the user they'll need to provide a digital signature" : ""}`;
+Conversation approach:
+1. Start with brief empathy: "I'm here to help you report the incident. Let's get the details documented."
+2. Let them tell you what happened in their own words first
+3. As they speak, listen for the required information and extract it naturally
+4. Ask follow-up questions only for missing critical details
+5. DON'T recap the entire incident back to them - just confirm key facts if unclear
+6. Once you have all required information, immediately call submit_form - don't ask for permission
+7. Keep it brief and supportive
+
+Critical rules:
+- Extract dates as YYYY-MM-DD, times as HH:MM
+- For severity/type fields, choose from options: ${formSchema.fields.filter((f: any) => f.type === "radio").map((f: any) => `${f.label}: ${f.options?.join(", ")}`).join(" | ")}
+- Be conversational, NOT robotic - don't say "Now I need the..." just ask naturally
+- Submit the form as soon as you have all required fields - don't delay
+${formSchema.requiresSignature ? "- After submitting, they'll provide a digital signature" : ""}`;
+    }
+
+    // Generic form instructions
+    return `You are a helpful assistant helping users complete a "${formSchema.title}" form.
+
+Required information:
+${formSchema.fields.filter((f: any) => f.required).map((f: any) => `- ${f.label}`).join("\n")}
+
+Approach:
+1. Briefly explain you'll help them fill out this form
+2. Have a natural conversation to gather the required information
+3. Don't recap everything - just collect the details efficiently
+4. Call submit_form as soon as you have all required information
+
+Format requirements:
+- Dates: YYYY-MM-DD
+- Times: HH:MM
+- Multiple choice: ${formSchema.fields.filter((f: any) => f.type === "radio").map((f: any) => `${f.label} (${f.options?.join(", ")})`).join("; ")}
+${formSchema.requiresSignature ? "- After submission, user will provide digital signature" : ""}`;
   };
 
   const handleServerEvent = (event: any) => {
