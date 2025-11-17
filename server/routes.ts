@@ -17,7 +17,7 @@ import { sendTeamsNotification } from "./microsoftTeams";
 import { loadCurrentUser, requireCapability, requireRoles, withAuth } from "./rbac";
 import cryptoRandomString from "crypto-random-string";
 import { sendAccessRequestNotification, sendAccessRequestApproved } from "./email";
-import { sharepointService } from "./sharepoint-service";
+import { sharePointService } from "./sharepoint";
 import { db } from "./db";
 import { eq, and, ilike, or } from "drizzle-orm";
 
@@ -979,25 +979,32 @@ export async function registerRoutes(app: Express) {
       // SharePoint integration for incident reports
       if (syncToSharePoint && form.type === 'incident-report') {
         try {
-          const config = await storage.sharepointConfig.getByOrganization(organizationId);
-          
-          if (config && config.enabled) {
-            const sharepointItemId = await sharepointService.createIncidentInSharePoint(
-              config,
-              form.formData as any
-            );
+          if (sharePointService.isConfigured()) {
+            const sharepointItemId = await sharePointService.createIncidentReportItem({
+              formData: form.formData as any,
+              formCode: form.formCode,
+              submittedBy: user.name,
+              submittedAt: form.createdAt,
+            });
             
-            // Update form with SharePoint item ID
-            const updated = await storage.forms.update(form.id, {
-              sharepointItemId,
-            } as any);
-            
-            if (updated) {
-              form.sharepointItemId = sharepointItemId;
+            if (sharepointItemId) {
+              // Update form with SharePoint item ID
+              const updated = await storage.forms.update(form.id, {
+                sharepointItemId,
+              } as any);
+              
+              if (updated) {
+                form.sharepointItemId = sharepointItemId;
+              }
+              
+              console.log(`✅ Incident report ${form.formCode} synced to SharePoint (ID: ${sharepointItemId})`);
             }
+          } else {
+            console.warn('⚠️  SharePoint sync requested but service not configured');
           }
         } catch (sharepointError: any) {
-          console.error('SharePoint sync failed:', sharepointError);
+          console.error('❌ SharePoint sync failed:', sharepointError.message);
+          // Don't fail the form submission if SharePoint sync fails
         }
       }
       
