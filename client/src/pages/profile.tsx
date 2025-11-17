@@ -3,17 +3,27 @@ import { useQuery, useMutation } from "@tanstack/react-query";
 import { apiRequest, queryClient } from "@/lib/queryClient";
 import { useForm } from "react-hook-form";
 import { zodResolver } from "@hookform/resolvers/zod";
-import { updateProfileSchema, type UpdateProfile, type User } from "@shared/schema";
+import { updateProfileSchema, type UpdateProfile, type User, type Organization } from "@shared/schema";
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from "@/components/ui/card";
 import { Button } from "@/components/ui/button";
 import { Form, FormControl, FormField, FormItem, FormLabel, FormMessage } from "@/components/ui/form";
 import { Input } from "@/components/ui/input";
+import { Badge } from "@/components/ui/badge";
+import { Avatar, AvatarFallback, AvatarImage } from "@/components/ui/avatar";
+import { Separator } from "@/components/ui/separator";
 import { useToast } from "@/hooks/use-toast";
-import { User as UserIcon } from "lucide-react";
+import { User as UserIcon, Building2, Calendar, Shield, Hash } from "lucide-react";
+import { format } from "date-fns";
 
 export default function Profile() {
   const { user } = useAuth();
   const { toast } = useToast();
+
+  // Fetch organization info
+  const { data: organization } = useQuery<Organization>({
+    queryKey: ["/api/organization"],
+    enabled: !!user,
+  });
 
   const form = useForm<UpdateProfile>({
     resolver: zodResolver(updateProfileSchema),
@@ -23,6 +33,16 @@ export default function Profile() {
       lastName: user?.lastName || "",
     },
   });
+
+  // Get user initials for avatar
+  const getInitials = (name: string) => {
+    return name
+      .split(' ')
+      .map(n => n[0])
+      .join('')
+      .toUpperCase()
+      .slice(0, 2);
+  };
 
   const updateProfileMutation = useMutation({
     mutationFn: async (data: UpdateProfile) => {
@@ -64,11 +84,89 @@ export default function Profile() {
             Profile
           </h1>
           <p className="text-muted-foreground mt-1 text-sm sm:text-base">
-            Manage your personal information
+            Manage your personal information and view account details
           </p>
         </div>
       </div>
 
+      {/* Account Overview Card */}
+      <Card data-testid="card-account-overview">
+        <CardHeader>
+          <CardTitle>Account Overview</CardTitle>
+          <CardDescription>
+            Your account information and organization details
+          </CardDescription>
+        </CardHeader>
+        <CardContent>
+          <div className="flex flex-col sm:flex-row gap-6">
+            {/* Avatar Section */}
+            <div className="flex flex-col items-center gap-3">
+              <Avatar className="h-24 w-24">
+                <AvatarImage src={user.profileImageUrl || undefined} alt={user.name} />
+                <AvatarFallback className="text-2xl">{getInitials(user.name)}</AvatarFallback>
+              </Avatar>
+              <Badge variant={user.active ? "success" : "destructive"} data-testid="badge-status">
+                {user.active ? "Active" : "Inactive"}
+              </Badge>
+            </div>
+
+            {/* Account Details */}
+            <div className="flex-1 space-y-4">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4">
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Hash className="h-4 w-4" />
+                    <span>User ID</span>
+                  </div>
+                  <p className="font-mono text-sm" data-testid="text-user-id">{user.id}</p>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Building2 className="h-4 w-4" />
+                    <span>Organization</span>
+                  </div>
+                  <p className="font-medium" data-testid="text-organization">
+                    {organization?.name || "Loading..."}
+                  </p>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Shield className="h-4 w-4" />
+                    <span>Role</span>
+                  </div>
+                  <p className="font-medium" data-testid="text-role-display">{user.role}</p>
+                </div>
+
+                <div className="space-y-1">
+                  <div className="flex items-center gap-2 text-sm text-muted-foreground">
+                    <Calendar className="h-4 w-4" />
+                    <span>Member Since</span>
+                  </div>
+                  <p className="font-medium" data-testid="text-created-at">
+                    {format(new Date(user.createdAt), 'MMM d, yyyy')}
+                  </p>
+                </div>
+              </div>
+
+              {organization && (
+                <div className="pt-2">
+                  <Separator className="mb-3" />
+                  <div className="flex items-center gap-2 text-sm">
+                    <span className="text-muted-foreground">Domain:</span>
+                    <code className="text-xs bg-muted px-2 py-1 rounded" data-testid="text-domain">
+                      {organization.domain}
+                    </code>
+                  </div>
+                </div>
+              )}
+            </div>
+          </div>
+        </CardContent>
+      </Card>
+
+      {/* Personal Information Card */}
       <Card data-testid="card-profile">
         <CardHeader>
           <CardTitle>Personal Information</CardTitle>
