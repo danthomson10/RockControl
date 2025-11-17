@@ -974,6 +974,7 @@ export async function registerRoutes(app: Express) {
       // Enforce tenant isolation - override organizationId and submittedById
       const form = await storage.forms.create({ 
         ...data,
+        organizationId,
         submittedById: user.id 
       } as any);
       
