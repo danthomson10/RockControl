@@ -28,7 +28,7 @@ export default function FillForm() {
 
   const submitFormMutation = useMutation({
     mutationFn: async (data: any) => 
-      apiRequest('/api/forms', 'POST', data),
+      apiRequest('/api/forms', { method: 'POST', body: data }),
     onSuccess: () => {
       toast({
         title: "Success",
