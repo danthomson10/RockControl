@@ -82,7 +82,7 @@ export default function FillForm() {
     );
   }
 
-  const handleVoiceFormComplete = (formData: any, signature?: string) => {
+  const handleVoiceFormComplete = (formData: any, signature?: string, conversationTranscript?: any[]) => {
     // Generate unique form code
     const formCode = `VOICE-WEB-${template.type.toUpperCase()}-${Date.now()}`;
     
@@ -100,6 +100,7 @@ export default function FillForm() {
       formData: completeFormData,
       status: 'pending',
       syncToSharePoint: template.type === 'incident-report' && syncToSharePoint,
+      voiceConversationTranscript: conversationTranscript,
     });
     
     setShowVoiceModal(false);

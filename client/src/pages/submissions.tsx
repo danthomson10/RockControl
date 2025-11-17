@@ -621,6 +621,66 @@ export default function Submissions() {
                   </Card>
                 )}
 
+                {/* Voice Conversation Transcript */}
+                {selectedForm.source === 'voice' && (selectedForm as any).voiceConversationTranscript && Array.isArray((selectedForm as any).voiceConversationTranscript) && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <Phone className="h-5 w-5" />
+                        Voice Conversation
+                      </CardTitle>
+                      <CardDescription>
+                        Complete conversation transcript from voice form submission
+                      </CardDescription>
+                    </CardHeader>
+                    <CardContent>
+                      <div className="space-y-3 max-h-96 overflow-y-auto">
+                        {((selectedForm as any).voiceConversationTranscript as Array<{
+                          role: 'user' | 'assistant';
+                          message: string;
+                          timestamp: string;
+                          extractedFields?: Record<string, any>;
+                        }>).map((turn, idx) => (
+                          <div
+                            key={idx}
+                            className={`flex ${turn.role === 'user' ? 'justify-end' : 'justify-start'}`}
+                          >
+                            <div
+                              className={`max-w-[80%] rounded-lg p-3 ${
+                                turn.role === 'user'
+                                  ? 'bg-primary text-primary-foreground'
+                                  : 'bg-muted'
+                              }`}
+                            >
+                              <div className="flex items-center gap-2 mb-1">
+                                <span className="text-xs font-semibold opacity-70">
+                                  {turn.role === 'user' ? 'User' : 'Assistant'}
+                                </span>
+                                <span className="text-xs opacity-60">
+                                  {format(new Date(turn.timestamp), 'h:mm a')}
+                                </span>
+                              </div>
+                              <p className="text-sm">{turn.message}</p>
+                              {turn.extractedFields && Object.keys(turn.extractedFields).length > 0 && (
+                                <div className="mt-2 pt-2 border-t border-current/20">
+                                  <p className="text-xs opacity-70 mb-1">Extracted:</p>
+                                  <div className="space-y-1">
+                                    {Object.entries(turn.extractedFields).map(([key, value]) => (
+                                      <div key={key} className="text-xs opacity-80">
+                                        <span className="font-medium">{key}:</span> {String(value)}
+                                      </div>
+                                    ))}
+                                  </div>
+                                </div>
+                              )}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    </CardContent>
+                  </Card>
+                )}
+
                 {/* Form Data */}
                 <Card>
                   <CardHeader>

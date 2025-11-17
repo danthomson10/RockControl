@@ -15,6 +15,13 @@
       "when": 1763341992489,
       "tag": "0001_brainy_red_hulk",
       "breakpoints": true
+    },
+    {
+      "idx": 2,
+      "version": "7",
+      "when": 1763363120639,
+      "tag": "0002_early_shriek",
+      "breakpoints": true
     }
   ]
 }

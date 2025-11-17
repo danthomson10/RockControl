@@ -1,0 +1,1 @@
+ALTER TABLE "forms" ADD COLUMN "voice_conversation_transcript" jsonb;

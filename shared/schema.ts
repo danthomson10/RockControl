@@ -44,6 +44,23 @@ export const aiRecommendationsSchema = z.object({
   followUpTasks: z.array(z.string()),
 });
 
+// Voice conversation transcript interface
+export interface VoiceConversationTurn {
+  role: 'user' | 'assistant';
+  message: string;
+  timestamp: string;
+  extractedFields?: Record<string, any>;
+}
+
+export const voiceConversationTurnSchema = z.object({
+  role: z.enum(['user', 'assistant']),
+  message: z.string(),
+  timestamp: z.string(),
+  extractedFields: z.record(z.any()).optional(),
+});
+
+export const voiceConversationTranscriptSchema = z.array(voiceConversationTurnSchema);
+
 export const incidentStatusEnum = pgEnum('incident_status', ['open', 'investigating', 'resolved', 'closed']);
 
 export const accessRequestStatusEnum = pgEnum('access_request_status', ['pending', 'approved', 'denied']);
@@ -278,6 +295,7 @@ export const forms = pgTable("forms", {
   sharepointItemId: text("sharepoint_item_id"),
   aiSummary: text("ai_summary"),
   aiRecommendations: jsonb("ai_recommendations"),
+  voiceConversationTranscript: jsonb("voice_conversation_transcript"),
   submittedById: integer("submitted_by_id").notNull().references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),
@@ -293,6 +311,7 @@ export const insertFormSchema = createInsertSchema(forms).omit({
   updatedAt: true,
 }).extend({
   formData: z.record(z.any()),
+  voiceConversationTranscript: voiceConversationTranscriptSchema.optional(),
 });
 export type InsertForm = z.infer<typeof insertFormSchema>;
 

@@ -3,7 +3,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle } from "@/components/u
 import { Button } from "@/components/ui/button";
 import { Card } from "@/components/ui/card";
 import { Badge } from "@/components/ui/badge";
-import { Mic, MicOff, Phone, PhoneOff, Loader2 } from "lucide-react";
+import { Mic, MicOff, Phone, PhoneOff, Loader2, CheckCircle2, Circle } from "lucide-react";
 import { SimpleSignaturePad } from "@/components/SimpleSignaturePad";
 import { useToast } from "@/hooks/use-toast";
 
@@ -11,13 +11,21 @@ interface VoiceFormModalProps {
   isOpen: boolean;
   onClose: () => void;
   formType: string;
-  onFormComplete: (formData: any, signature?: string) => void;
+  onFormComplete: (formData: any, signature?: string, conversationTranscript?: any[]) => void;
 }
 
 interface Message {
   role: "user" | "assistant";
   content: string;
   timestamp: Date;
+  extractedFields?: Record<string, any>;
+}
+
+interface FormSection {
+  name: string;
+  label: string;
+  fields: string[];
+  completed: boolean;
 }
 
 export default function VoiceFormModal({
@@ -33,9 +41,16 @@ export default function VoiceFormModal({
   const [messages, setMessages] = useState<Message[]>([]);
   const [formData, setFormData] = useState<any>({});
   const [formSchema, setFormSchema] = useState<any>(null);
+  const [formSections, setFormSections] = useState<FormSection[]>([]);
   const [showSignature, setShowSignature] = useState(false);
   const [signature, setSignature] = useState<string>("");
   const [currentAssistantMessage, setCurrentAssistantMessage] = useState<string>("");
+  const [conversationTranscript, setConversationTranscript] = useState<Array<{
+    role: 'user' | 'assistant';
+    message: string;
+    timestamp: string;
+    extractedFields?: Record<string, any>;
+  }>>([]);
   
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null);
   const dataChannelRef = useRef<RTCDataChannel | null>(null);
@@ -49,6 +64,18 @@ export default function VoiceFormModal({
       cleanup();
     }
   }, [isOpen]);
+
+  useEffect(() => {
+    if (formSchema) {
+      buildFormSections();
+    }
+  }, [formSchema]);
+
+  useEffect(() => {
+    if (formSchema) {
+      updateSectionCompletion();
+    }
+  }, [formData, formSchema]);
 
   const fetchFormSchema = async () => {
     try {
@@ -64,6 +91,50 @@ export default function VoiceFormModal({
         variant: "destructive",
       });
     }
+  };
+
+  const buildFormSections = () => {
+    if (!formSchema?.fields) return;
+
+    const sections: FormSection[] = [];
+    const sectionMap = new Map<string, string[]>();
+
+    formSchema.fields.forEach((field: any) => {
+      const sectionName = field.section || 'General Information';
+      if (!sectionMap.has(sectionName)) {
+        sectionMap.set(sectionName, []);
+      }
+      sectionMap.get(sectionName)!.push(field.name);
+    });
+
+    sectionMap.forEach((fieldNames, sectionLabel) => {
+      sections.push({
+        name: sectionLabel.toLowerCase().replace(/\s+/g, '_'),
+        label: sectionLabel,
+        fields: fieldNames,
+        completed: false,
+      });
+    });
+
+    setFormSections(sections);
+  };
+
+  const updateSectionCompletion = () => {
+    if (formSections.length === 0) return;
+
+    const updatedSections = formSections.map((section) => {
+      const requiredFieldsInSection = formSchema.fields
+        .filter((f: any) => section.fields.includes(f.name) && f.required)
+        .map((f: any) => f.name);
+
+      const allRequiredFilled = requiredFieldsInSection.every(
+        (fieldName: string) => formData[fieldName] !== undefined && formData[fieldName] !== ''
+      );
+
+      return { ...section, completed: allRequiredFilled };
+    });
+
+    setFormSections(updatedSections);
   };
 
   const startConversation = async () => {
@@ -155,14 +226,27 @@ export default function VoiceFormModal({
           tools: [
             {
               type: "function",
-              name: "submit_form",
-              description: "Submit the completed form data after collecting all required fields from the user",
+              name: "update_form_fields",
+              description: "Extract and update form fields in real-time as the user speaks. Call this IMMEDIATELY when you identify field values from their response, even if they mention multiple fields at once (e.g., 'I fell at Site 3 and hurt my back' should extract both location and injury type).",
               parameters: {
                 type: "object",
                 properties: getFormProperties(),
-                required: formSchema.fields
-                  .filter((f: any) => f.required)
-                  .map((f: any) => f.name),
+                required: [],
+              },
+            },
+            {
+              type: "function",
+              name: "submit_form",
+              description: "Submit the completed form after ALL required fields have been collected via update_form_fields. Only call this when you have all required information.",
+              parameters: {
+                type: "object",
+                properties: {
+                  confirmed: {
+                    type: "boolean",
+                    description: "Always set to true",
+                  },
+                },
+                required: ["confirmed"],
               },
             },
           ],
@@ -170,7 +254,7 @@ export default function VoiceFormModal({
         },
       });
 
-      // Start conversation
+      // Start conversation - don't say "I want to fill out", just start directly
       sendEvent({
         type: "conversation.item.create",
         item: {
@@ -178,7 +262,7 @@ export default function VoiceFormModal({
           role: "user",
           content: [{
             type: "input_text",
-            text: `I want to fill out a ${formSchema?.title}. Please guide me through the form.`
+            text: `Start form`
           }]
         }
       });
@@ -246,50 +330,54 @@ export default function VoiceFormModal({
   const getAIInstructions = () => {
     if (!formSchema) return "";
 
+    const requiredFields = formSchema.fields.filter((f: any) => f.required);
+    const optionalFields = formSchema.fields.filter((f: any) => !f.required);
+    const radioFields = formSchema.fields.filter((f: any) => f.type === "radio");
+    
     const isIncidentReport = formType.includes('incident');
 
     if (isIncidentReport) {
-      return `You are a supportive safety assistant helping a worker report a workplace incident. They need to document what happened so it can be properly recorded and addressed.
+      return `You are a form data extraction system. You are NOT a conversational assistant.
 
-Your sole purpose is to help them report this incident as quickly and painlessly as possible. Be empathetic - they may be stressed or shaken.
+ABSOLUTE RULES - VIOLATION TERMINATES SESSION:
+- FORBIDDEN: Greetings, pleasantries, empathy, rapport-building, questions about wellbeing
+- FORBIDDEN: "How are you?", "I hope you're okay", "Thank you for calling", "Have a nice day"
+- FORBIDDEN: Repeating back their full story or recapping information
+- REQUIRED: Ask ONLY about specific missing form fields - nothing else
 
-Required information to collect:
-${formSchema.fields.filter((f: any) => f.required).map((f: any) => `- ${f.label}`).join("\n")}
+Required fields to collect:
+${requiredFields.map((f: any) => `- ${f.name}: ${f.label}${f.options ? ` (options: ${f.options.join(', ')})` : ''}`).join("\n")}
 
-Conversation approach:
-1. Start with brief empathy: "I'm here to help you report the incident. Let's get the details documented."
-2. Let them tell you what happened in their own words first
-3. As they speak, listen for the required information and extract it naturally
-4. Ask follow-up questions only for missing critical details
-5. DON'T recap the entire incident back to them - just confirm key facts if unclear
-6. Once you have all required information, immediately call submit_form - don't ask for permission
-7. Keep it brief and supportive
+EXECUTION PROTOCOL:
+1. First response: "What happened?" - NOTHING MORE
+2. User speaks → call update_form_fields immediately with ALL extractable values
+3. Check missing required fields → ask ONLY "What about [field]?" for each missing field
+4. All required fields collected → call submit_form - NO confirmation, NO recap
+5. Extract dates as YYYY-MM-DD, times as HH:MM
+6. For radio fields: ${radioFields.map((f: any) => `${f.name}=[${f.options?.join('|')}]`).join(', ')}
 
-Critical rules:
-- Extract dates as YYYY-MM-DD, times as HH:MM
-- For severity/type fields, choose from options: ${formSchema.fields.filter((f: any) => f.type === "radio").map((f: any) => `${f.label}: ${f.options?.join(", ")}`).join(" | ")}
-- Be conversational, NOT robotic - don't say "Now I need the..." just ask naturally
-- Submit the form as soon as you have all required fields - don't delay
-${formSchema.requiresSignature ? "- After submitting, they'll provide a digital signature" : ""}`;
+Multi-field extraction (MANDATORY):
+User: "I fell at Site 3 and hurt my back around 2pm"
+→ update_form_fields({location: "Site 3", incidentType: "Fall", injuryDescription: "hurt my back", incidentTime: "14:00"})
+
+STAY FOCUSED. COLLECT DATA. NO CONVERSATION.`;
     }
 
     // Generic form instructions
-    return `You are a helpful assistant helping users complete a "${formSchema.title}" form.
+    return `You are a form data extraction system. FORBIDDEN: greetings, small talk, confirmation.
 
-Required information:
-${formSchema.fields.filter((f: any) => f.required).map((f: any) => `- ${f.label}`).join("\n")}
+Required fields:
+${requiredFields.map((f: any) => `- ${f.name}: ${f.label}${f.options ? ` (${f.options.join(', ')})` : ''}`).join("\n")}
 
-Approach:
-1. Briefly explain you'll help them fill out this form
-2. Have a natural conversation to gather the required information
-3. Don't recap everything - just collect the details efficiently
-4. Call submit_form as soon as you have all required information
+PROTOCOL:
+1. First: "What information do you have?" - NOTHING ELSE
+2. Extract all available fields → call update_form_fields
+3. Ask ONLY "What about [missing field]?" for each missing required field
+4. All required collected → call submit_form immediately
+5. Dates: YYYY-MM-DD, Times: HH:MM
+6. Extract multiple fields per response (MANDATORY)
 
-Format requirements:
-- Dates: YYYY-MM-DD
-- Times: HH:MM
-- Multiple choice: ${formSchema.fields.filter((f: any) => f.type === "radio").map((f: any) => `${f.label} (${f.options?.join(", ")})`).join("; ")}
-${formSchema.requiresSignature ? "- After submission, user will provide digital signature" : ""}`;
+NO conversation. Data collection ONLY.`;
   };
 
   const handleServerEvent = (event: any) => {
@@ -330,11 +418,34 @@ ${formSchema.requiresSignature ? "- After submission, user will provide digital 
         break;
 
       case "response.function_call_arguments.done":
-        if (event.name === "submit_form") {
+        if (event.name === "update_form_fields") {
           try {
-            const data = JSON.parse(event.arguments);
-            setFormData(data);
+            const extractedFields = JSON.parse(event.arguments);
+            console.log("Extracted fields:", extractedFields);
             
+            // Update form data with extracted fields
+            setFormData((prev: any) => ({
+              ...prev,
+              ...extractedFields,
+            }));
+
+            // Track extracted fields in conversation transcript
+            setConversationTranscript((prev) => {
+              const lastEntry = prev[prev.length - 1];
+              if (lastEntry && lastEntry.role === 'assistant') {
+                return prev.slice(0, -1).concat({
+                  ...lastEntry,
+                  extractedFields,
+                });
+              }
+              return prev;
+            });
+          } catch (error) {
+            console.error("Error parsing extracted fields:", error);
+          }
+        } else if (event.name === "submit_form") {
+          try {
+            // Use accumulated formData instead of event arguments
             if (formSchema?.requiresSignature) {
               setShowSignature(true);
               sendEvent({
@@ -344,15 +455,15 @@ ${formSchema.requiresSignature ? "- After submission, user will provide digital 
                   role: "assistant",
                   content: [{
                     type: "text",
-                    text: "Great! I've collected all the information. Please provide your digital signature to complete the form."
+                    text: "Perfect! I've collected all the information. Please provide your digital signature to complete the form."
                   }]
                 }
               });
             } else {
-              handleSubmit(data);
+              handleSubmit(formData);
             }
           } catch (error) {
-            console.error("Error parsing form data:", error);
+            console.error("Error submitting form:", error);
           }
         }
         break;
@@ -375,7 +486,18 @@ ${formSchema.requiresSignature ? "- After submission, user will provide digital 
   };
 
   const addMessage = (role: "user" | "assistant", content: string) => {
-    setMessages((prev) => [...prev, { role, content, timestamp: new Date() }]);
+    const timestamp = new Date();
+    setMessages((prev) => [...prev, { role, content, timestamp }]);
+    
+    // Also add to conversation transcript
+    setConversationTranscript((prev) => [
+      ...prev,
+      {
+        role,
+        message: content,
+        timestamp: timestamp.toISOString(),
+      },
+    ]);
   };
 
   const toggleMute = () => {
@@ -387,7 +509,7 @@ ${formSchema.requiresSignature ? "- After submission, user will provide digital 
   };
 
   const handleSubmit = (data: any) => {
-    onFormComplete(data, signature);
+    onFormComplete(data, signature, conversationTranscript);
     cleanup();
     onClose();
   };
@@ -417,6 +539,8 @@ ${formSchema.requiresSignature ? "- After submission, user will provide digital 
     setShowSignature(false);
     setSignature("");
     setCurrentAssistantMessage("");
+    setConversationTranscript([]);
+    setFormSections([]);
   };
 
   const endConversation = () => {
@@ -488,19 +612,61 @@ ${formSchema.requiresSignature ? "- After submission, user will provide digital 
               </div>
             </Card>
 
-            {/* Form Data Preview */}
-            {Object.keys(formData).length > 0 && (
-              <Card className="p-4">
-                <h4 className="font-semibold mb-2 text-sm">Collected Information:</h4>
-                <div className="grid grid-cols-2 gap-2 text-sm">
-                  {Object.entries(formData).map(([key, value]) => (
-                    <div key={key}>
-                      <span className="text-muted-foreground">{key}:</span>{" "}
-                      <span className="font-medium">{String(value)}</span>
-                    </div>
-                  ))}
-                </div>
-              </Card>
+            {/* Progress Tracker & Form Field Display */}
+            {isConnected && (
+              <div className="grid grid-cols-2 gap-4">
+                {/* Section Progress */}
+                <Card className="p-4">
+                  <h4 className="font-semibold mb-3 text-sm">Form Progress</h4>
+                  <div className="space-y-2">
+                    {formSections.length > 0 ? (
+                      formSections.map((section) => (
+                        <div
+                          key={section.name}
+                          className="flex items-center gap-2"
+                          data-testid={`section-${section.name}`}
+                        >
+                          {section.completed ? (
+                            <CheckCircle2 className="h-4 w-4 text-green-600" data-testid={`checkmark-${section.name}`} />
+                          ) : (
+                            <Circle className="h-4 w-4 text-muted-foreground" />
+                          )}
+                          <span className={`text-sm ${section.completed ? "text-foreground font-medium" : "text-muted-foreground"}`}>
+                            {section.label}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        Start speaking to see progress...
+                      </p>
+                    )}
+                  </div>
+                </Card>
+
+                {/* Real-time Form Fields */}
+                <Card className="p-4">
+                  <h4 className="font-semibold mb-3 text-sm">Captured Data</h4>
+                  <div className="space-y-2 max-h-32 overflow-y-auto">
+                    {Object.keys(formData).length > 0 ? (
+                      Object.entries(formData).map(([key, value]) => (
+                        <div key={key} className="text-xs" data-testid={`field-${key}`}>
+                          <span className="text-muted-foreground capitalize">
+                            {key.replace(/([A-Z])/g, ' $1').trim()}:
+                          </span>{" "}
+                          <span className="font-medium text-foreground">
+                            {Array.isArray(value) ? value.join(", ") : String(value)}
+                          </span>
+                        </div>
+                      ))
+                    ) : (
+                      <p className="text-xs text-muted-foreground">
+                        No data captured yet...
+                      </p>
+                    )}
+                  </div>
+                </Card>
+              </div>
             )}
 
             {/* Controls */}
