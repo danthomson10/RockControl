@@ -82,21 +82,57 @@ export class SharePointService {
     try {
       const { formData, formCode, submittedBy, submittedAt } = data;
 
+      // Normalize date to ISO format (YYYY-MM-DD) for SharePoint
+      const normalizeDate = (dateValue: any): string => {
+        if (!dateValue) return submittedAt.toISOString().split('T')[0];
+        
+        // If already a Date object
+        if (dateValue instanceof Date) {
+          return dateValue.toISOString().split('T')[0];
+        }
+        
+        // If string, try to parse it
+        if (typeof dateValue === 'string') {
+          const parsed = new Date(dateValue);
+          if (!isNaN(parsed.getTime())) {
+            return parsed.toISOString().split('T')[0];
+          }
+        }
+        
+        // Fallback to submission date
+        return submittedAt.toISOString().split('T')[0];
+      };
+
+      // Convert various truthy/falsey values to boolean for SharePoint boolean fields
+      const normalizeBoolean = (value: any): boolean => {
+        if (typeof value === 'boolean') return value;
+        if (typeof value === 'number') return value !== 0;
+        if (typeof value === 'string') {
+          const normalized = value.toLowerCase().trim();
+          return normalized === 'yes' || normalized === 'true' || normalized === '1';
+        }
+        return false;
+      };
+
+      const wereThereInjuries = normalizeBoolean(formData.wereThereInjuries);
+      const incidentDate = normalizeDate(formData.dateOfIncident || formData.incidentDate);
+
       const listItem = {
         fields: {
           Title: formData.incidentTitle || formData.title || `Incident ${formCode}`,
-          Date: submittedAt.toISOString().split('T')[0],
-          TimeOffIncident: formData.timeOfIncident || formData.time || "",
-          Location: formData.location || "",
-          IncidentType: formData.incidentType || "",
-          Severity: formData.severity || "",
-          IncidentDescription: formData.description || formData.incidentDescription || "",
-          PeopleInvolved: formData.peopleInvolved || "",
-          WereThirdpartiesinjur: formData.wereThirdPartiesInjured || formData.thirdPartiesInjured || "",
-          InjuryDetails: formData.injuryDetails || "",
-          Witnesses: formData.witnesses || "",
-          ImmediateActionTaken: formData.immediateActionTaken || formData.immediateActions || "",
-          EquipmentInvolved: formData.equipmentInvolved || "",
+          field_1: incidentDate, // DateOfIncident (normalized to YYYY-MM-DD)
+          field_2: formData.timeOfIncident || formData.time || "", // TimeOfIncident
+          field_3: formData.location || "", // Location
+          field_4: formData.incidentType || "", // IncidentType
+          field_5: formData.severity || "", // Severity
+          field_6: formData.description || formData.incidentDescription || "", // IncidentDescription
+          field_7: formData.peopleInvolved || "", // PeopleInvolved
+          field_8: wereThereInjuries, // WereThereInjuries (boolean - properly converted)
+          field_9: formData.injuryDetails || "", // InjuryDetails
+          field_10: formData.witnesses || "", // Witnesses
+          field_11: formData.immediateActionTaken || formData.immediateActions || "", // ImmediateActionsTaken
+          field_12: formData.equipmentInvolved || "", // EquipmentInvolved
+          field_18: submittedBy, // ReportedBy
         },
       };
 
