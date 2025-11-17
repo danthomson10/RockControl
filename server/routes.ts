@@ -18,6 +18,7 @@ import { loadCurrentUser, requireCapability, requireRoles, withAuth } from "./rb
 import cryptoRandomString from "crypto-random-string";
 import { sendAccessRequestNotification, sendAccessRequestApproved } from "./email";
 import { sharePointService } from "./sharepoint";
+import { aiIncidentAnalyzer } from "./ai-incident-analyzer";
 import { db } from "./db";
 import { eq, and, ilike, or } from "drizzle-orm";
 
@@ -1005,6 +1006,35 @@ export async function registerRoutes(app: Express) {
         } catch (sharepointError: any) {
           console.error('❌ SharePoint sync failed:', sharepointError.message);
           // Don't fail the form submission if SharePoint sync fails
+        }
+      }
+
+      // AI analysis for incident reports
+      if (form.type === 'incident-report') {
+        try {
+          const analysis = await aiIncidentAnalyzer.analyzeIncident({
+            formData: form.formData as any,
+            formCode: form.formCode,
+            type: form.type,
+          });
+
+          if (analysis) {
+            // Update form with AI analysis
+            const updated = await storage.forms.update(form.id, {
+              aiSummary: analysis.summary,
+              aiRecommendations: analysis.recommendations,
+            } as any);
+
+            if (updated) {
+              form.aiSummary = analysis.summary;
+              form.aiRecommendations = analysis.recommendations as any;
+            }
+
+            console.log(`🤖 AI analysis completed for ${form.formCode}`);
+          }
+        } catch (aiError: any) {
+          console.error('❌ AI analysis failed:', aiError.message);
+          // Don't fail the form submission if AI analysis fails
         }
       }
       

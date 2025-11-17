@@ -261,6 +261,8 @@ export const forms = pgTable("forms", {
   signerName: text("signer_name"),
   signedAt: timestamp("signed_at"),
   sharepointItemId: text("sharepoint_item_id"),
+  aiSummary: text("ai_summary"),
+  aiRecommendations: jsonb("ai_recommendations"),
   submittedById: integer("submitted_by_id").notNull().references(() => users.id),
   createdAt: timestamp("created_at").notNull().defaultNow(),
   updatedAt: timestamp("updated_at").notNull().defaultNow(),

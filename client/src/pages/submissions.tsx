@@ -267,6 +267,40 @@ export default function Submissions() {
                               ))}
                             </div>
                           )}
+
+                          {/* AI Analysis for incident reports */}
+                          {form.type === 'incident-report' && form.aiSummary && (
+                            <div className="mt-3 p-3 rounded-lg bg-primary/5 border border-primary/10">
+                              <div className="flex items-start gap-2">
+                                <div className="p-1 rounded bg-primary/10">
+                                  <svg className="h-4 w-4 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                                    <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                                  </svg>
+                                </div>
+                                <div className="flex-1 min-w-0">
+                                  <h4 className="text-sm font-semibold text-foreground mb-1">AI Analysis</h4>
+                                  <p className="text-xs text-muted-foreground leading-relaxed">
+                                    {form.aiSummary}
+                                  </p>
+                                  {form.aiRecommendations && typeof form.aiRecommendations === 'object' && 'riskLevel' in form.aiRecommendations && (
+                                    <div className="mt-2">
+                                      <Badge 
+                                        variant={
+                                          form.aiRecommendations.riskLevel === 'critical' ? 'destructive' :
+                                          form.aiRecommendations.riskLevel === 'high' ? 'destructive' :
+                                          form.aiRecommendations.riskLevel === 'medium' ? 'default' :
+                                          'secondary'
+                                        }
+                                        className="text-xs"
+                                      >
+                                        {form.aiRecommendations.riskLevel} risk
+                                      </Badge>
+                                    </div>
+                                  )}
+                                </div>
+                              </div>
+                            </div>
+                          )}
                         </div>
 
                         <div className="flex items-center gap-2">
