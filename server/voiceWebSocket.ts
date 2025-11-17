@@ -63,15 +63,10 @@ export function setupVoiceWebSocket(server: Server, storage: DatabaseStorage) {
 
           case 'media':
             if (session?.elevenLabsWs && session.elevenLabsWs.readyState === WebSocket.OPEN) {
-              // Forward audio from Twilio to ElevenLabs using the schema the
-              // Conversational AI websocket expects. The API recently changed
-              // from accepting a raw "user_audio_chunk" payload to requiring a
-              // typed message with an audio_event payload that contains
-              // `audio_base_64`. Sending the legacy payload results in the
-              // "Invalid message received" 1008 close code we see in the logs.
+              // Forward audio from Twilio to ElevenLabs using the newer envelope format
+              // ElevenLabs Conversational AI expects type: "user_audio_chunk" with audio_event.audio_base_64
               const audioPayload = msg.media.payload;
               session.elevenLabsWs.send(JSON.stringify({
-                user_audio_chunk: audioPayload,
                 type: 'user_audio_chunk',
                 audio_event: {
                   audio_base_64: audioPayload,
@@ -139,15 +134,7 @@ async function initializeElevenLabsConversation(
 
     session.elevenLabsWs.on('open', () => {
       console.log('✅ ElevenLabs connection established');
-      
-      // Send initial conversation context
-      session.elevenLabsWs?.send(JSON.stringify({
-        type: 'conversation_initiation_client_data',
-        conversation_initiation_client_data: {
-          caller_phone: session.callerPhone,
-          form_type: session.formType,
-        }
-      }));
+      // ElevenLabs agent will start speaking automatically based on its configured first message
     });
 
     session.elevenLabsWs.on('message', (data: Buffer) => {
