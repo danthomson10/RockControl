@@ -110,7 +110,7 @@ export default function SiteDetailPage() {
                 <div className="space-y-1">
                   <div className="text-xs font-medium text-muted-foreground">Coordinates</div>
                   <div className="text-sm font-mono">
-                    {site.latitude.toFixed(4)}, {site.longitude.toFixed(4)}
+                    {Number(site.latitude).toFixed(4)}, {Number(site.longitude).toFixed(4)}
                   </div>
                 </div>
               )}
