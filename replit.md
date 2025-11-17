@@ -12,7 +12,15 @@ Do not make changes to the `server/rbac.ts` file.
 Do not make changes to the `client/src/lib/rbac.ts` file.
 Do not make changes to the `storage` folder.
 
+## Recent Changes (November 2025)
+- **Browser Voice Forms**: Switched from OpenAI Realtime API to ElevenLabs Conversational AI for browser-based voice forms, providing a more methodical and consistent form-filling experience that matches the phone system. Implementation uses WebSocket proxy for secure API key handling.
+
 ## System Architecture
+
+### Voice Architecture
+- **Phone System**: Twilio → voiceWebSocket.ts → ElevenLabs Conversational AI
+- **Browser System**: VoiceFormModal.tsx → elevenlabsBrowserProxy.ts → ElevenLabs Conversational AI
+- Both systems use the same ElevenLabs agent for consistency and methodical form-filling workflow
 
 ### UI/UX Decisions
 The application features a high-fidelity frontend adhering to the "Rock Control" brand identity, utilizing Rock Red (#E23B2E) and Slate Dark (#3A3A3A) as primary and navigation colors, respectively. It includes a dashboard with stats cards, job detail pages with tabbed navigation, and a responsive sidebar. The design system is built on `shadcn/ui` primitives, incorporating a custom form builder with JSON Schema support, a digital signature canvas, and a voice memo recorder component. Light/dark mode theming is supported.
@@ -28,12 +36,15 @@ The application features a high-fidelity frontend adhering to the "Rock Control"
 - **Multi-tenancy**: Organizations are managed through a dedicated table, and all data operations are scoped to the user's organization using `req.currentUser.organizationId` and storage-layer scoped methods (e.g., `getByIdScoped`, `updateScoped`).
 - **Role-Based Access Control (RBAC)**: A shared RBAC module defines a capability matrix for 7 distinct roles (OrgAdmin, ProjectManager, HSEManager, SiteSupervisor, FieldTech, ClientViewer, Subcontractor). Both server-side middleware and client-side UI helpers enforce these permissions. All mutating API endpoints are protected by `requireCapability` middleware.
 - **Dynamic Forms**: Supports dynamic JSON Schema-based forms (e.g., Take-5, Crew Briefing, Risk Control Plan, Permit to Work, Incident Report), with digital signature and voice memo capture capabilities. Forms can be linked to specific jobs.
-- **Voice-Enabled Forms**: Workers can call +6435672557 (Twilio) and interact with ElevenLabs Conversational AI to complete safety forms hands-free. Voice submissions are tracked with source='voice' and status='pending' for management review.
+- **Voice-Enabled Forms**: Workers can complete safety forms via voice through two channels:
+  - **Phone**: Call +6435672557 (Twilio) to interact with ElevenLabs Conversational AI for hands-free form completion
+  - **Browser**: Click microphone button in web forms to use ElevenLabs Conversational AI directly in the browser
+  - Voice submissions are tracked with source='voice' and status='pending' for management review
 - **Submissions Management**: Comprehensive /submissions page with filtering by status, form type, and source (web vs voice), displaying submission details with visual badge indicators for voice-submitted forms.
 - **Job Management**: CRUD operations for construction projects, including status tracking and linking to sites.
 - **Sites Management**: Comprehensive system for managing construction sites, including clients, contacts, and file attachments, with robust multi-tenant isolation and RBAC protection.
 - **Incident Management**: Tracking and management of safety incidents with severity levels.
-- **SharePoint Integration**: Automatic syncing of incident reports to SharePoint list at https://aitearoa.sharepoint.com/sites/rockcontrol when "Send to SharePoint" is checked. Features include Microsoft Graph API OAuth 2.0 authentication, comprehensive field mapping (date, time, location, severity, description, injuries, etc.), robust date/boolean normalization, and non-blocking error handling (form submissions succeed locally even if SharePoint sync fails).
+- **SharePoint Integration**: Automatic syncing of incident reports to SharePoint list at https://aitearoa.sharepoint.com/sites/rockcontrol when "Send to SharePoint" is checked. Features include Microsoft Graph API OAuth 2.0 authentication, comprehensive field mapping (date, time, location, severity, description, injuries, etc.), robust date/boolean normalization, and non-blocking error handling (form submissions succeed locally even if SharePoint sync fails). SharePoint sync is enabled by default for all incident report submissions.
 - **AI-Powered Incident Analysis**: Automatic analysis of incident reports using OpenAI GPT-4 to generate executive summaries, recommended immediate actions, preventive measures, follow-up tasks, and risk level assessments. AI analysis is stored in the database (aiSummary, aiRecommendations) and displayed in the submissions UI with visual risk indicators. Non-blocking implementation ensures form submissions succeed even if AI analysis fails.
 
 ### System Design Choices
