@@ -24,6 +24,7 @@ import VariationForm from "@/pages/variation-form";
 import Submissions from "@/pages/submissions";
 import Jobs from "@/pages/jobs";
 import Sites from "@/pages/sites";
+import SiteDetail from "@/pages/site-detail";
 import JobDetailByCode from "@/pages/job-detail-by-code";
 import NotFound from "@/pages/not-found";
 
@@ -68,6 +69,7 @@ function Router() {
       <Route path="/jobs" component={Jobs} />
       <Route path="/jobs/:code" component={JobDetailByCode} />
       <Route path="/sites" component={Sites} />
+      <Route path="/sites/:id" component={SiteDetail} />
       <Route component={NotFound} />
     </Switch>
   );
