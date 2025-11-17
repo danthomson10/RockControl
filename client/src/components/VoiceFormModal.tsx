@@ -254,19 +254,7 @@ export default function VoiceFormModal({
         },
       });
 
-      // Start conversation - don't say "I want to fill out", just start directly
-      sendEvent({
-        type: "conversation.item.create",
-        item: {
-          type: "message",
-          role: "user",
-          content: [{
-            type: "input_text",
-            text: `Start form`
-          }]
-        }
-      });
-
+      // Trigger AI to start speaking immediately with its greeting
       sendEvent({ type: "response.create" });
 
     } catch (error: any) {
