@@ -33,6 +33,7 @@ The application features a high-fidelity frontend adhering to the "Rock Control"
 - **Job Management**: CRUD operations for construction projects, including status tracking and linking to sites.
 - **Sites Management**: Comprehensive system for managing construction sites, including clients, contacts, and file attachments, with robust multi-tenant isolation and RBAC protection.
 - **Incident Management**: Tracking and management of safety incidents with severity levels.
+- **SharePoint Integration**: Automatic syncing of incident reports to SharePoint list at https://aitearoa.sharepoint.com/sites/rockcontrol when "Send to SharePoint" is checked. Features include Microsoft Graph API OAuth 2.0 authentication, comprehensive field mapping (date, time, location, severity, description, injuries, etc.), robust date/boolean normalization, and non-blocking error handling (form submissions succeed locally even if SharePoint sync fails).
 
 ### System Design Choices
 - **API Routes**: All API routes are protected by authentication middleware and enforce organization-level scoping. Specific mutating endpoints are further protected by RBAC middleware.
@@ -43,4 +44,5 @@ The application features a high-fidelity frontend adhering to the "Rock Control"
 - **Replit Auth**: For email/password and OAuth (Google, GitHub) authentication.
 - **PostgreSQL (Neon)**: The primary database for storing all application data and session information.
 - **Drizzle ORM**: Used for interacting with the PostgreSQL database.
-- **Microsoft Integration**: Planned for Microsoft Graph OAuth, Teams notifications, and SharePoint document synchronization.
+- **Microsoft Graph API**: Implemented for SharePoint integration using Azure AD OAuth 2.0 with client credentials flow. Enables automatic syncing of incident reports to SharePoint lists with comprehensive field mapping and normalization.
+- **SharePoint**: Integrated for incident report storage and tracking at https://aitearoa.sharepoint.com/sites/rockcontrol. Azure credentials stored securely in Replit secrets (AZURE_TENANT_ID, AZURE_CLIENT_ID, AZURE_CLIENT_SECRET, SHAREPOINT_SITE_ID, SHAREPOINT_LIST_ID).
