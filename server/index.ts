@@ -3,7 +3,6 @@ import { createServer } from "http";
 import { registerRoutes } from "./routes";
 import { setupVite, serveStatic, log } from "./vite";
 import { setupVoiceWebSocket } from "./voiceWebSocket";
-import { setupElevenLabsBrowserProxy } from "./elevenlabsBrowserProxy";
 
 const app = express();
 
@@ -57,9 +56,6 @@ app.use((req, res, next) => {
   
   // Setup voice WebSocket for Twilio integration
   setupVoiceWebSocket(server, storage);
-  
-  // Setup ElevenLabs WebSocket proxy for browser voice forms
-  setupElevenLabsBrowserProxy(server);
 
   app.use((err: any, _req: Request, res: Response, _next: NextFunction) => {
     const status = err.status || err.statusCode || 500;
