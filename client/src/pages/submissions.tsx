@@ -5,7 +5,8 @@ import { Badge } from "@/components/ui/badge";
 import { Input } from "@/components/ui/input";
 import { Button } from "@/components/ui/button";
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from "@/components/ui/select";
-import { FileText, Search, Filter, Phone, Laptop, ChevronRight } from "lucide-react";
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogDescription } from "@/components/ui/dialog";
+import { FileText, Search, Filter, Phone, Laptop, ChevronRight, AlertTriangle, CheckCircle2, AlertCircle } from "lucide-react";
 import { Skeleton } from "@/components/ui/skeleton";
 import type { Form } from "@shared/schema";
 import { formatDistanceToNow, format } from "date-fns";
@@ -39,6 +40,7 @@ export default function Submissions() {
   const [statusFilter, setStatusFilter] = useState<string>("all");
   const [typeFilter, setTypeFilter] = useState<string>("all");
   const [sourceFilter, setSourceFilter] = useState<string>("all");
+  const [selectedForm, setSelectedForm] = useState<Form | null>(null);
 
   const { data: forms, isLoading } = useQuery<Form[]>({
     queryKey: ["/api/forms"],
@@ -217,7 +219,12 @@ export default function Submissions() {
             const isVoiceSubmission = form.source === 'voice';
             
             return (
-              <Card key={form.id} className="hover-elevate cursor-pointer" data-testid={`form-card-${form.formCode}`}>
+              <Card 
+                key={form.id} 
+                className="hover-elevate cursor-pointer" 
+                data-testid={`form-card-${form.formCode}`}
+                onClick={() => setSelectedForm(form)}
+              >
                 <CardContent className="p-4">
                   <div className="flex items-start gap-4">
                     {/* Icon */}
@@ -323,6 +330,160 @@ export default function Submissions() {
           })}
         </div>
       )}
+
+      {/* Form Detail Dialog */}
+      <Dialog open={selectedForm !== null} onOpenChange={() => setSelectedForm(null)}>
+        <DialogContent className="max-w-3xl max-h-[90vh] overflow-y-auto">
+          {selectedForm && (
+            <>
+              <DialogHeader>
+                <div className="flex items-center gap-2 flex-wrap">
+                  <DialogTitle>{selectedForm.formCode}</DialogTitle>
+                  <Badge variant="secondary">
+                    {formTypeLabels[selectedForm.type] || selectedForm.type}
+                  </Badge>
+                  {selectedForm.source === 'voice' && (
+                    <Badge variant="default" className="gap-1">
+                      <Phone className="h-3 w-3" />
+                      Voice
+                    </Badge>
+                  )}
+                  <Badge variant={statusColors[selectedForm.status] as any}>
+                    {selectedForm.status}
+                  </Badge>
+                </div>
+                <DialogDescription>
+                  Submitted {format(new Date(selectedForm.createdAt), 'MMM d, yyyy h:mm a')}
+                </DialogDescription>
+              </DialogHeader>
+
+              <div className="space-y-6 mt-4">
+                {/* AI Analysis for Incident Reports */}
+                {selectedForm.type === 'incident-report' && selectedForm.aiSummary && (
+                  <Card>
+                    <CardHeader>
+                      <CardTitle className="text-lg flex items-center gap-2">
+                        <div className="p-2 rounded-lg bg-primary/10">
+                          <svg className="h-5 w-5 text-primary" fill="none" viewBox="0 0 24 24" stroke="currentColor">
+                            <path strokeLinecap="round" strokeLinejoin="round" strokeWidth={2} d="M9.663 17h4.673M12 3v1m6.364 1.636l-.707.707M21 12h-1M4 12H3m3.343-5.657l-.707-.707m2.828 9.9a5 5 0 117.072 0l-.548.547A3.374 3.374 0 0014 18.469V19a2 2 0 11-4 0v-.531c0-.895-.356-1.754-.988-2.386l-.548-.547z" />
+                          </svg>
+                        </div>
+                        AI Analysis
+                      </CardTitle>
+                    </CardHeader>
+                    <CardContent className="space-y-4">
+                      {/* Risk Level */}
+                      {selectedForm.aiRecommendations && typeof selectedForm.aiRecommendations === 'object' && 'riskLevel' in selectedForm.aiRecommendations && (
+                        <div>
+                          <h4 className="text-sm font-semibold mb-2">Risk Assessment</h4>
+                          <Badge 
+                            variant={
+                              selectedForm.aiRecommendations.riskLevel === 'critical' ? 'destructive' :
+                              selectedForm.aiRecommendations.riskLevel === 'high' ? 'destructive' :
+                              selectedForm.aiRecommendations.riskLevel === 'medium' ? 'default' :
+                              'secondary'
+                            }
+                            className="text-sm px-3 py-1"
+                          >
+                            {String(selectedForm.aiRecommendations.riskLevel).toUpperCase()} RISK
+                          </Badge>
+                        </div>
+                      )}
+
+                      {/* Executive Summary */}
+                      <div>
+                        <h4 className="text-sm font-semibold mb-2">Executive Summary</h4>
+                        <p className="text-sm text-muted-foreground leading-relaxed">
+                          {selectedForm.aiSummary}
+                        </p>
+                      </div>
+
+                      {/* Recommendations */}
+                      {selectedForm.aiRecommendations && typeof selectedForm.aiRecommendations === 'object' && (
+                        <>
+                          {'immediateActions' in selectedForm.aiRecommendations && Array.isArray(selectedForm.aiRecommendations.immediateActions) && selectedForm.aiRecommendations.immediateActions.length > 0 && (
+                            <div>
+                              <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                                <AlertTriangle className="h-4 w-4 text-destructive" />
+                                Immediate Actions
+                              </h4>
+                              <ul className="space-y-1">
+                                {selectedForm.aiRecommendations.immediateActions.map((action: string, idx: number) => (
+                                  <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                                    <span className="text-destructive mt-1">•</span>
+                                    <span>{action}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {'preventiveMeasures' in selectedForm.aiRecommendations && Array.isArray(selectedForm.aiRecommendations.preventiveMeasures) && selectedForm.aiRecommendations.preventiveMeasures.length > 0 && (
+                            <div>
+                              <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                                <CheckCircle2 className="h-4 w-4 text-primary" />
+                                Preventive Measures
+                              </h4>
+                              <ul className="space-y-1">
+                                {selectedForm.aiRecommendations.preventiveMeasures.map((measure: string, idx: number) => (
+                                  <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                                    <span className="text-primary mt-1">•</span>
+                                    <span>{measure}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+
+                          {'followUpTasks' in selectedForm.aiRecommendations && Array.isArray(selectedForm.aiRecommendations.followUpTasks) && selectedForm.aiRecommendations.followUpTasks.length > 0 && (
+                            <div>
+                              <h4 className="text-sm font-semibold mb-2 flex items-center gap-2">
+                                <AlertCircle className="h-4 w-4 text-warning" />
+                                Follow-up Tasks
+                              </h4>
+                              <ul className="space-y-1">
+                                {selectedForm.aiRecommendations.followUpTasks.map((task: string, idx: number) => (
+                                  <li key={idx} className="text-sm text-muted-foreground flex items-start gap-2">
+                                    <span className="text-warning mt-1">•</span>
+                                    <span>{task}</span>
+                                  </li>
+                                ))}
+                              </ul>
+                            </div>
+                          )}
+                        </>
+                      )}
+                    </CardContent>
+                  </Card>
+                )}
+
+                {/* Form Data */}
+                <Card>
+                  <CardHeader>
+                    <CardTitle className="text-lg">Form Data</CardTitle>
+                  </CardHeader>
+                  <CardContent>
+                    {selectedForm.formData && typeof selectedForm.formData === 'object' ? (
+                      <div className="space-y-3">
+                        {Object.entries(selectedForm.formData as Record<string, unknown>).map(([key, value]) => (
+                          <div key={key} className="grid grid-cols-3 gap-4">
+                            <div className="font-medium text-sm">{key}</div>
+                            <div className="col-span-2 text-sm text-muted-foreground break-words">
+                              {value != null ? String(value) : 'N/A'}
+                            </div>
+                          </div>
+                        ))}
+                      </div>
+                    ) : (
+                      <p className="text-sm text-muted-foreground">No form data available</p>
+                    )}
+                  </CardContent>
+                </Card>
+              </div>
+            </>
+          )}
+        </DialogContent>
+      </Dialog>
     </div>
   );
 }

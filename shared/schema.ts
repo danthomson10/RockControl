@@ -270,6 +270,8 @@ export const forms = pgTable("forms", {
 
 export const insertFormSchema = createInsertSchema(forms).omit({
   id: true,
+  aiSummary: true,
+  aiRecommendations: true,
   createdAt: true,
   updatedAt: true,
 }).extend({
