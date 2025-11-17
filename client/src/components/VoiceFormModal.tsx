@@ -660,13 +660,16 @@ NO conversation. Data collection ONLY.`;
                   <div className="space-y-2 max-h-32 overflow-y-auto">
                     {Object.keys(formData).length > 0 ? (
                       Object.entries(formData).map(([key, value]) => (
-                        <div key={key} className="text-xs" data-testid={`field-${key}`}>
-                          <span className="text-muted-foreground capitalize">
-                            {key.replace(/([A-Z])/g, ' $1').trim()}:
-                          </span>{" "}
-                          <span className="font-medium text-foreground">
-                            {Array.isArray(value) ? value.join(", ") : String(value)}
-                          </span>
+                        <div key={key} className="flex items-start gap-2 text-xs" data-testid={`field-${key}`}>
+                          <CheckCircle2 className="h-3 w-3 text-green-600 mt-0.5 flex-shrink-0" />
+                          <div className="flex-1">
+                            <span className="text-muted-foreground capitalize">
+                              {key.replace(/([A-Z])/g, ' $1').trim()}:
+                            </span>{" "}
+                            <span className="font-medium text-foreground">
+                              {Array.isArray(value) ? value.join(", ") : String(value)}
+                            </span>
+                          </div>
                         </div>
                       ))
                     ) : (
