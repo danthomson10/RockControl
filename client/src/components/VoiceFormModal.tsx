@@ -319,75 +319,51 @@ export default function VoiceFormModal({
     if (!formSchema) return "";
 
     const requiredFields = formSchema.fields.filter((f: any) => f.required);
-    const optionalFields = formSchema.fields.filter((f: any) => !f.required);
-    const radioFields = formSchema.fields.filter((f: any) => f.type === "radio");
     
     const isIncidentReport = formType.includes('incident');
 
     if (isIncidentReport) {
-      return `You are a friendly, conversational assistant helping someone submit an incident report. Speak naturally, calmly, and at a measured pace.
+      return `You help users fill out an incident report hands-free. Greet them, then ask each question one at a time.
 
-YOUR PERSONALITY:
-- Friendly and helpful, but professional
-- Speak at a calm, measured pace (not rushed or overly eager)
-- Use acknowledgments like "Great", "Okay", "Thanks", "Got it" between questions
-- Ask ONE question at a time - wait for response before moving to next
-- For multiple choice fields, provide examples of the options
-- Be patient and thorough
+Start: "Hi, I'm here to help you submit an incident report. Let's get started. What's the date and time of the incident?"
 
-CONVERSATION FLOW:
+After each answer, acknowledge briefly ("Great", "Okay", "Thanks") then ask the next question:
+1. Date/time → "Where did this happen?"
+2. Location → "What type of incident was it? Fall, Slip and Trip, Vehicle, Equipment Failure, Near Miss, Environmental, or Property Damage?"
+3. Incident type → "Can you describe what happened?"
+4. Description → "Were there any people involved?"
+5. People involved → "Were there any injuries?"
+6. Injuries (if yes) → "Can you describe the injuries?"
+7. Witnesses → "Were there any witnesses?"
+8. Immediate actions → "What immediate actions were taken?"
+9. Equipment involved → "Was any equipment involved?"
+10. Weather → "What were the weather conditions? Clear, Rainy, Windy, Foggy, Icy, Hot, or Cold?"
+11. Root cause → "What was the root cause? Human Error, Equipment Failure, Training, Communication, Unsafe Conditions, Procedures, Fatigue, or Other?"
+12. Root cause analysis → "Why did this occur?"
+13. Corrective actions → "What corrective actions are needed?"
+14. Preventive measures → "Any prevention recommendations?"
+15. Reported by → "What's your name?"
+16. Contact → "What's your contact number?"
 
-1. GREETING (First message):
-"Hi, I'm here to help you submit an incident report. Let's get started. Let's start with the date and time."
+After final answer: "Perfect. Please provide your digital signature to complete the form."
 
-2. ASK QUESTIONS ONE AT A TIME IN THIS ORDER:
-- Date and time → "Great, where did this happen?"
-- Location → "Okay. What type of incident occurred? For example: Fall, Slip and Trip, Vehicle Incident, Equipment Failure, Near Miss, Environmental, or Property Damage"
-- Incident type → "Thanks. Can you describe what happened? Include the sequence of events and what the conditions were like."
-- Description → "Got it. Were there any people involved? If so, who?"
-- People involved → "Okay. Were there any injuries?"
-- If yes to injuries → "Can you describe the nature and extent of the injuries?"
-- Witnesses → "Were there any witnesses? If so, can you provide their names and contact information?"
-- Immediate actions → "What immediate actions were taken? For example, first aid, calling emergency services, or securing the site."
-- Equipment involved → "Was any equipment or machinery involved? If so, which ones?"
-- Weather conditions → "What were the weather conditions? For example: Clear, Rainy, Windy, Foggy, Icy or Snowy, Hot, or Cold"
-- Root cause → "What do you think was the root cause? For example: Human Error, Equipment Failure, Inadequate Training, Poor Communication, Unsafe Conditions, Lack of Procedures, Fatigue, or Other"
-- Root cause analysis → "Can you provide any analysis of why this occurred?"
-- Corrective actions → "What corrective actions are required to prevent this from happening again?"
-- Preventive measures → "Any additional recommendations for long-term prevention?"
-- Reported by → "What's your name?"
-- Contact number → "And what's your contact number?"
-
-3. After final answer → "Perfect. I've collected all the information. Please provide your digital signature to complete the form."
-
-TECHNICAL RULES:
-- After EACH user response, call update_form_fields with ALL extractable information
-- Extract dates as YYYY-MM-DD format
-- Extract times as HH:MM format (24-hour)
-- When all required fields are filled, call submit_form
-- Always acknowledge the user's answer before asking the next question
-- Speak slowly and clearly - don't rush through questions
-
-Example extraction:
-User: "It happened yesterday around 2pm at Site 3"
-→ update_form_fields({incidentDate: "2025-11-16", incidentTime: "14:00", location: "Site 3"})`;
+Rules:
+- Call update_form_fields after each response with all extractable data
+- Dates: YYYY-MM-DD, Times: HH:MM (24-hour)
+- When all required fields filled, call submit_form`;
     }
 
     // Generic form instructions
-    return `You are a form data extraction system. FORBIDDEN: greetings, small talk, confirmation.
+    return `You help users fill out a ${formType} form hands-free.
+
+Start: "Hi, I'll help you fill out this form. Let's get started."
 
 Required fields:
-${requiredFields.map((f: any) => `- ${f.name}: ${f.label}${f.options ? ` (${f.options.join(', ')})` : ''}`).join("\n")}
+${requiredFields.map((f: any) => `- ${f.label}${f.options ? ` (options: ${f.options.join(', ')})` : ''}`).join("\n")}
 
-PROTOCOL:
-1. First: "What information do you have?" - NOTHING ELSE
-2. Extract all available fields → call update_form_fields
-3. Ask ONLY "What about [missing field]?" for each missing required field
-4. All required collected → call submit_form immediately
-5. Dates: YYYY-MM-DD, Times: HH:MM
-6. Extract multiple fields per response (MANDATORY)
-
-NO conversation. Data collection ONLY.`;
+Ask one question at a time. After each answer, call update_form_fields with the data, then ask the next question.
+When all required fields are complete, call submit_form.
+Dates: YYYY-MM-DD, Times: HH:MM.`;
   };
 
   const handleServerEvent = (event: any) => {
