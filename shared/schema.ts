@@ -29,6 +29,21 @@ export const formSourceEnum = pgEnum('form_source', ['web', 'voice']);
 
 export const incidentSeverityEnum = pgEnum('incident_severity', ['low', 'medium', 'high', 'critical']);
 
+// AI Recommendations interface for incident reports
+export interface AiRecommendations {
+  riskLevel: 'low' | 'medium' | 'high' | 'critical';
+  immediateActions: string[];
+  preventiveMeasures: string[];
+  followUpTasks: string[];
+}
+
+export const aiRecommendationsSchema = z.object({
+  riskLevel: z.enum(['low', 'medium', 'high', 'critical']),
+  immediateActions: z.array(z.string()),
+  preventiveMeasures: z.array(z.string()),
+  followUpTasks: z.array(z.string()),
+});
+
 export const incidentStatusEnum = pgEnum('incident_status', ['open', 'investigating', 'resolved', 'closed']);
 
 export const accessRequestStatusEnum = pgEnum('access_request_status', ['pending', 'approved', 'denied']);
@@ -278,7 +293,14 @@ export const insertFormSchema = createInsertSchema(forms).omit({
   formData: z.record(z.any()),
 });
 export type InsertForm = z.infer<typeof insertFormSchema>;
-export type Form = typeof forms.$inferSelect;
+
+// Base Form type from database
+type FormBase = typeof forms.$inferSelect;
+
+// Extended Form type with properly typed AI recommendations
+export type Form = Omit<FormBase, 'aiRecommendations'> & {
+  aiRecommendations: AiRecommendations | null;
+};
 
 export const formTemplates = pgTable("form_templates", {
   id: integer("id").primaryKey().generatedAlwaysAsIdentity(),
